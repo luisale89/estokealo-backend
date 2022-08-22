@@ -1,0 +1,2 @@
+FLASK_APP=landingpage_server
+FLASK_DEBUG=True
