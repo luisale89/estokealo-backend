@@ -5,103 +5,123 @@ class JSONResponse:
     """
     Genera mensaje de respuesta a las solicitudes JSON. los parametros son:
     - message: Mesanje a mostrar al usuario.
-    - app_result = "success", "error"
+    - result = "success", "error"
     - status_code = http status code
-    - payload = dict con cualquier informacion que se necesite enviar al usuario.
-    - warnings = dict con las justificaciones de cada error detectado en el request.
+    - data = dict con cualquier informacion que se necesite enviar al usuario.
     methods:
     - serialize() -> return dict
     - to_json() -> http JSON response
     """
 
-    def __init__(self, message="ok", app_result="success", status_code=200, payload=None, warnings=None):
-        self.app_result = app_result
-        self.status_code = status_code
-        self.data = payload
+    def __init__(self, message="ok", result="success", status_code=200, data=None):
         self.message = message
-        self.warings = warnings
+        self.result = result
+        self.status_code = status_code
+        self.data = dict(data or ())
 
     def __repr__(self) -> str:
         return f'JSONResponse(status_code={self.status_code})'
 
-    def serialize(self):
+    def serialize(self) -> dict:
         rv = {
-            "result": self.app_result,
-            "data": dict(self.data or ()),
             "message": self.message,
-            "warings": dict(self.warings or ())
+            "result": self.result,
+            "data": self.data
         }
         return rv
 
     def to_json(self):
         return jsonify(self.serialize()), self.status_code
 
-
-class ErrorResponse:
-
-    def __init__(self, parameters:list=None, warnings:dict=None) -> None:
-        self.parameters = {"errors": parameters} #list of parameters with any error detected
-        self.warnings = warnings
-    
-    def _base_response(self) -> dict:
+    @staticmethod
+    def bad_request(data:dict={}) -> dict:
+        '''status_code: 400'''
+        result = "bad_request"
         return {
-            "message": "something went wrong, try again later",
-            "status_code": 500,
-            "payload": self.parameters or [],
-            "warnings": self.warnings or {}
+            "message": "bad request, check your inputs and try again",
+            "result": result,
+            "status_code": 400,
+            "data": {result: data}
         }
 
-    @property
-    def bad_request(self) -> dict:
-        return self._base_response().update({
-            "message": "bad request, check your inputs and try again",
-            "status_code": 400
-        })
-
-    @property
-    def unauthorized(self) -> dict:
-        return self._base_response().update({
-            "message": "unauthorized to get requested resource",
+    @staticmethod
+    def unauthorized() -> dict:
+        '''status_code: 401'''
+        return {
+            "message": "user is not authorized to get the resource",
+            "result": "unauthorized",
             "status_code": 401
-        })
+        }
 
-    @property
-    def user_not_active(self) -> dict:
-        return self._base_response().update({
-            "message": "user is not active or has not completed validation process"
-        })
+    @staticmethod
+    def user_not_active() -> dict:
+        '''status_code: 402'''
+        return {
+            "message": "user is not active or has not completed validation process",
+            "result": "user_not_active",
+            "status_code": 402,
+        }
 
-    @property
-    def wrong_password(self) -> dict:
-        return self._base_response().update({
-            "message": "wrog password, check your input and try again",
-            "status_code": 403
-        })
+    @staticmethod
+    def wrong_password() -> dict:
+        '''status_code: 403'''
+        return {
+            "message": "wrog password, check your inputs and try again",
+            "result": "wrong_password",
+            "status_code": 403,
+        }
 
-    @property
-    def not_found(self) -> dict:
-        return self._base_response().update({
-            "message": "resource was not found in the database",
-            "status_code": 404
-        })
+    @staticmethod
+    def not_found(data:dict={}) -> dict:
+        '''status_code: 404'''
+        result = "not_found"
+        return {
+            "message": "required resource was not found in the database",
+            "result": result,
+            "status_code": 404,
+            "data": {result: data}
+        }
 
-    @property
-    def unaccepted(self) -> dict:
-        return self._base_response().update({
-            "message": "invalid inputs were found in the request",
-            "status_code": 406
-        })
+    @staticmethod
+    def not_acceptable(data:dict={}) -> dict:
+        '''status_code: 406'''
+        result = "not_acceptable"
+        return {
+            "message": "",
+            "result": result,
+            "status_code": 406,
+            "data": {result: data}
+        }
 
-    @property
-    def conflict(self) -> dict:
-        return self._base_response().update({
-            "message": "parameter already exists in the database",
-            "status_code": 409
-        })
+    @staticmethod
+    def conflict(data:dict={}) -> dict:
+        '''status_code: 409'''
+        result = "conflict"
+        return {
+            "message": "data already exists in the database",
+            "result": result,
+            "status_code": 409,
+            "data": {result: data}
+        }
 
-    @property
-    def service_unavailable(self) -> dict:
-        return self._base_response().update({
+    @staticmethod
+    def permanently_deleted(data:dict={}) -> dict:
+        '''status_code: 410'''
+        result ="permanently_deleted"
+        return {
+            "message": "requested resource has been deleted",
+            "result": result,
+            "status_code": 410,
+            "data": {result: data}
+        }
+
+    @staticmethod
+    def serivice_unavailable(data:dict={}) -> dict:
+        '''status_code: 503'''
+        result = "service_unavailable"
+        return {
             "message": "requested service is unavailable, try again later",
-            "status_code": 503
-        })
+            "result": result,
+            "status_code": 503,
+            "data": {result: data}
+        }

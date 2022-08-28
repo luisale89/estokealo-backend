@@ -1,2 +1,2 @@
-FLASK_APP=landingpage_server
+FLASK_APP=api
 FLASK_DEBUG=True

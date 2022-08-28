@@ -1,4 +1,3 @@
-from email.policy import default
 from api.extensions import db
 from api.utils import helpers as h
 from datetime import datetime, timedelta
@@ -43,14 +42,14 @@ class User(db.Model):
 
     def serialize_all(self) -> dict:
         return {
-            self.__tablename__: self._base_serializer().update({
+            self.__tablename__: self._base_serializer() | {
                 "signup_date": h.normalize_datetime(self._signup_date),
                 "signup_completed": self._signup_completed,
                 "phone": self.phone,
                 "email": self._email,
                 "email_confirmed": self._email_confirmed,
                 "address": self.address.get("address", {})
-            })
+            }
         }
 
     @property
@@ -102,11 +101,11 @@ class Role(db.Model):
 
     def serialize_all(self) -> dict:
         return {
-            self.__tablename__: self._base_serializer().update({
+            self.__tablename__: self._base_serializer() | {
                 self.user.serialize(),
                 self.company.serialize(),
                 self.role_function.serialize()
-            })
+            }
         }
 
 
@@ -143,7 +142,7 @@ class Company(db.Model):
 
     def serialize_all(self):
         return {
-            self.__tablename__: self._base_serializer().update({
+            self.__tablename__: self._base_serializer() | {
                 "timezone_name": self.timezone_name,
                 "address": self.address.get("address", {}),
                 "currency": {
@@ -151,7 +150,7 @@ class Company(db.Model):
                     "rate": self.currency_rate
                 },
                 "creation_date": h.normalize_datetime(self._created_at)
-            })
+            }
         }
 
     def dolarize(self, value:float) -> float:
