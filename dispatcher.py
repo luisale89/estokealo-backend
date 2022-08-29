@@ -1,10 +1,12 @@
 from werkzeug.middleware.dispatcher import DispatcherMiddleware
 from werkzeug.serving import run_simple
-from frontend_server import create_app as create_frontend
-from landingpage_server import create_app as create_landing
+from frontend_app import create_app as create_frontend
+from landingpage_app import create_app as create_landing
+from api import create_app as create_api
 
 application = DispatcherMiddleware(create_landing(), {
-    '/app': create_frontend()
+    '/app': create_frontend(),
+    '/api': create_api()
 })
 
 if __name__ == '__main__':

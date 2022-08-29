@@ -93,7 +93,7 @@ class UserOperations:
         if user_id:
             self._user = db.session.query(User.id).get(user_id)
         elif user_email:
-            self._user = db.session.query(User.id).filter(User.email == user_email).first()
+            self._user = db.session.query(User.id).filter(User._email == user_email).first()
         else:
             self._user = None
 

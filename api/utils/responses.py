@@ -45,12 +45,14 @@ class JSONResponse:
         }
 
     @staticmethod
-    def unauthorized() -> dict:
+    def unauthorized(data:dict={}) -> dict:
         '''status_code: 401'''
+        result = "unauthorized"
         return {
             "message": "user is not authorized to get the resource",
-            "result": "unauthorized",
-            "status_code": 401
+            "result": result,
+            "status_code": 401,
+            "data": {result: data}
         }
 
     @staticmethod

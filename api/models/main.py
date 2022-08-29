@@ -23,6 +23,7 @@ class User(db.Model):
     phone = db.Column(db.String(64), default="")
     address = db.Column(JSON, default={"address": {}})
     #relationships
+    roles = db.relationship("Role", back_populates="user", lazy="dynamic")
 
     def __repr__(self) -> str:
         return f"User(id={self.id})"
@@ -32,7 +33,9 @@ class User(db.Model):
             "ID": self.id,
             "first_name": self.first_name,
             "last_name": self.last_name,
-            "profile_image": self._profile_image
+            "profile_image": self._profile_image,
+            "email_confirmed": self._email_confirmed,
+            "signup_completed": self._signup_completed
         }
     
     def serialize(self) -> dict:
@@ -44,11 +47,17 @@ class User(db.Model):
         return {
             self.__tablename__: self._base_serializer() | {
                 "signup_date": h.normalize_datetime(self._signup_date),
-                "signup_completed": self._signup_completed,
                 "phone": self.phone,
                 "email": self._email,
-                "email_confirmed": self._email_confirmed,
                 "address": self.address.get("address", {})
+            }
+        }
+
+    def serialize_public_info(self) -> dict:
+        return {
+            self.__tablename__: self._base_serializer() | {
+                "companies": list(map(lambda x: x.company.serialize(), \
+                    self.roles.filter(Role._inv_accepted == True, Role._is_active == True).all()))
             }
         }
 
@@ -102,11 +111,15 @@ class Role(db.Model):
     def serialize_all(self) -> dict:
         return {
             self.__tablename__: self._base_serializer() | {
-                self.user.serialize(),
-                self.company.serialize(),
-                self.role_function.serialize()
+                **self.user.serialize(),
+                **self.company.serialize(),
+                **self.role_function.serialize()
             }
         }
+
+    @property
+    def is_enabled(self) -> bool:
+        return True if self._inv_accepted and self._is_active else False
 
 
 class Company(db.Model):
@@ -147,7 +160,8 @@ class Company(db.Model):
                 "address": self.address.get("address", {}),
                 "currency": {
                     **self.currency_data.get("currency", {}),
-                    "rate": self.currency_rate
+                    "rate": self.currency_rate,
+                    "base": self.BASE_CURRENCY
                 },
                 "creation_date": h.normalize_datetime(self._created_at)
             }

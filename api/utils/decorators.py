@@ -70,7 +70,9 @@ def role_required(level: int = 99):  # role-level requiried for the target endpo
                     raise APIException.from_response(JSONResponse.user_not_active())
 
                 if role.role_function.level > level:
-                    raise APIException.from_response(JSONResponse.unauthorized())
+                    raise APIException.from_response(JSONResponse.unauthorized(data={
+                        "role_level": f"role_level must be less than {level} to get resource"
+                    }))
 
                 kwargs['role'] = role
                 return fn(*args, **kwargs)
