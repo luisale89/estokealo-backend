@@ -17,7 +17,7 @@ def json_required(required: dict = None):
             if not request.is_json:
                 raise APIException.from_response(
                     JSONResponse.not_acceptable(data={
-                        "request_header": "Missing 'content-type': 'application/json' in header request"
+                        "request_header": "Missing 'content-type: application/json' in header request"
                     })
                 )
 

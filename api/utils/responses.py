@@ -49,7 +49,7 @@ class JSONResponse:
         '''status_code: 401'''
         result = "unauthorized"
         return {
-            "message": "user is not authorized to get the resource",
+            "message": "user's authorization is invalid",
             "result": result,
             "status_code": 401,
             "data": {result: data}
@@ -89,7 +89,7 @@ class JSONResponse:
         '''status_code: 406'''
         result = "not_acceptable"
         return {
-            "message": "",
+            "message": "invalid configuration in request parameters",
             "result": result,
             "status_code": 406,
             "data": {result: data}

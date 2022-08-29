@@ -17,7 +17,7 @@ def datetime_formatter(date:datetime) -> str:
     return date.strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
-def normalize_datetime(date:datetime) -> Union(datetime, None):
+def normalize_datetime(date:datetime) -> Union[datetime, None]:
     '''
     Helper function to normalize datetime and store it into the database
     The normalized datetime is naive, and utc based
@@ -244,3 +244,124 @@ class StringHelpers:
         password = "".join(sample(all_cores, length))
 
         return password
+
+
+class QueryParams:
+    """class that represents the query paramteres in request."""
+
+    def __init__(self, params) -> None:
+        self.params_flat = params.to_dict()
+        self.params_non_flat = params.to_dict(flat=False)
+        self.warnings = []
+
+    def __repr__(self) -> str:
+        return f'QueryParams(parameters={self.params_non_flat})'
+
+
+    @staticmethod
+    def _normalize_parameter(value:list):
+        """
+        Given a non-flattened query parameter value,
+        and if the value is a list only containing 1 item,
+        then the value is flattened.
+        param value: a value from a query parameter
+        return: a normalized query parameter value
+        """
+        return value if len(value) > 1 else value[0]
+
+
+    def normalize_query(self) -> dict:
+        """
+        Converts query parameters from only containing one value for each parameter,
+        to include parameters with multiple values as lists.
+        :return: a dict of normalized query parameters
+        """
+        return {k: self._normalize_parameter(v) for k, v in self.params_non_flat.items()}
+
+
+    def get_all_values(self, key: str) -> Union[list, None]:
+        """return all values for specified key.
+        return None if key is not found in the parameters
+        """
+        return self.params_non_flat.get(key, None)
+
+
+    def get_first_value(self, key: str, as_integer:bool = False) -> Union[str, int, None]:
+        """return first value in the list of specified key.
+        return None if key is not found in the parameters
+        """
+        value = self.params_flat.get(key, None)
+        if not value:
+            self.warnings.append({key: f"{key} not found in query parameters"})
+            return value
+
+        if as_integer:
+            int_value = StringHelpers.to_int(value)
+            if not int_value:
+                self.warnings.append({key: f"{value} can't be converted to 'int', is not a numeric string"})
+            return int_value
+        
+        return value
+
+
+    def get_all_integers(self, key: str) -> Union[list, None]:
+        """returns a list of integers created from a list of values in the request. 
+        if the conversion fails, the value is warnings
+        > parameters: (key: str)
+        > returns: values: [list || None]
+        if no items was successfully converted to integer value, 
+        an empty list is returned.
+        """
+        values = self.get_all_values(key)
+        if not values:
+            self.warnings.append({key: f"{key} not found in query parameters"})
+            return None
+
+        for v in values:
+            if not isinstance(v, int):
+                self.warnings.append({key: f"expecting 'int' value for [{key}] parameter, [{v}] was received"})
+
+        return [int(v) for v in values if StringHelpers.to_int(v)]
+
+
+    def get_pagination_params(self) -> tuple:
+        """
+        function to get pagination parameters from request
+        default values are given if no parameter is in request.
+        Return Tuple -> (page, limit)
+        """
+        page = StringHelpers.to_int(self.params_flat.get("page", None))
+        limit = StringHelpers.to_int(self.params_flat.get("limit", None))
+
+        if not page:
+            self.warnings.append({"page": "pagination parameter [page] not found as [int] in query string"})
+            page = 1 #default page value
+        if not limit:
+            self.warnings.append({"limit": "pagination parameter [limit] not found as [int] in query string"})
+            limit = 20 #default limit value
+
+        return page, limit
+
+
+    @staticmethod
+    def get_pagination_form(pag_instance) -> dict:
+        """
+        Receive a pagination instance from flasksqlalchemy, 
+        returns a dict with pagination data in a dict, set to return to the user.
+        """
+        return {
+            "pagination": {
+                "pages": pag_instance.pages,
+                "has_next": pag_instance.has_next,
+                "has_prev": pag_instance.has_prev,
+                "current_page": pag_instance.page,
+                "total_items": pag_instance.total
+            }
+        }
+
+
+    def get_warings(self) -> dict:
+        resp = {}
+        for w in self.warnings:
+            resp.update(w) if isinstance(w, dict) else resp.update({w: "error"})
+        return resp

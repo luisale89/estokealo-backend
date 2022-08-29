@@ -6,7 +6,7 @@ from webassets.filter import get_filter
 libsass = get_filter(  # se crea un filtro a partir de libsass, con todas las configuraciones necesarias
     'libsass',
     # style='compressed',  # parametro define el estilo de salida del bundle. En prod. debe ser 'compressed'
-    includes=['./landingpage_server/static/scss'],  # lista con las rutas que contienen los .scss importados en el index.scss
+    includes=['./landingpage_app/static/scss'],  # lista con las rutas que contienen los .scss importados en el index.scss
     as_output=True
 )
 
