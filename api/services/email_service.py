@@ -62,3 +62,11 @@ class Email_api_service:
             return False, {self.SERVICE_NAME: f"{self.ERROR_MSG} - {e}"}
 
         return True, {self.SERVICE_NAME: f"email was sent to: [{self.email_to}]"}
+
+    @classmethod
+    def user_verification(cls, email_to:str, verification_code:int):
+        content = f"El código de verificación que solicitó: {verification_code}"
+        sender = "luis.lucena89@gmail.com"
+        subject = "código de verificación | estokealo"
+        
+        return cls(email_to=email_to, content=content, sender=sender, subject=subject)

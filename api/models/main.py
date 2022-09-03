@@ -13,7 +13,6 @@ class User(db.Model):
     __tablename__="user"
     id = db.Column(db.Integer, primary_key=True)
     _email = db.Column(db.String(256), unique=True, nullable=False)
-    _email_confirmed = db.Column(db.Boolean, default=False)
     _password_hash = db.Column(db.String(256), nullable=False)
     _signup_completed = db.Column(db.Boolean, default=False)
     _signup_date = db.Column(db.DateTime, default=datetime.utcnow)
@@ -33,8 +32,6 @@ class User(db.Model):
             "ID": self.id,
             "first_name": self.first_name,
             "last_name": self.last_name,
-            "profile_image": self._profile_image,
-            "email_confirmed": self._email_confirmed,
             "signup_completed": self._signup_completed
         }
     
@@ -46,28 +43,25 @@ class User(db.Model):
     def serialize_all(self) -> dict:
         return {
             self.__tablename__: self._base_serializer() | {
-                "signup_date": h.normalize_datetime(self._signup_date),
+                "signup_date": h.datetime_formatter(self._signup_date),
                 "phone": self.phone,
                 "email": self._email,
+                "profile_image": self._profile_image,
                 "address": self.address.get("address", {})
-            }
-        }
-
-    def serialize_public_info(self) -> dict:
-        return {
-            self.__tablename__: self._base_serializer() | {
-                "companies": list(map(lambda x: x.company.serialize(), \
-                    self.roles.filter(Role._inv_accepted == True, Role._is_active == True).all()))
             }
         }
 
     @property
     def is_enabled(self) -> bool:
-        return True if self._signup_completed and self._email_confirmed else False
+        return self.signup_completed
 
     @property
     def email(self):
         return self._email
+
+    @email.setter
+    def email(self, new_email):
+        self._email = new_email
 
     @property
     def password(self):
@@ -76,6 +70,14 @@ class User(db.Model):
     @password.setter
     def password(self, password):
         self._password_hash = generate_password_hash(password, method='sha256')
+
+    @property
+    def signup_completed(self):
+        return self._signup_completed
+
+    @signup_completed.setter
+    def signup_completed(self, new_state:bool):
+        self._signup_completed = new_state
 
 
 class Role(db.Model):

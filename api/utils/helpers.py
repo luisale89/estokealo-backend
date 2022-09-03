@@ -4,6 +4,7 @@ import os, re, string, unicodedata
 from dateutil.parser import parse, ParserError
 from itsdangerous import BadSignature, Signer
 from random import sample
+from flask_jwt_extended import create_access_token
 
 
 def datetime_formatter(date:datetime) -> str:
@@ -105,26 +106,26 @@ class StringHelpers:
     """StringHelpers utilities"""
 
     def __init__(self, string:str=None) -> None:
-        self._string = string or ""
+        self._value = string or ""
 
     def __repr__(self) -> str:
-        return f"StringHelpers(string:{self.string})"
+        return f"StringHelpers(string:{self.value})"
 
     def __bool__(self) -> bool:
-        return True if self.string else False
+        return True if self.value else False
 
     @property
-    def string(self) -> str:
-        return self._string
+    def value(self) -> str:
+        return self._value
     
-    @string.setter
-    def string(self, new_val:str):
-        self._string = new_val if isinstance(new_val, str) else ''
+    @value.setter
+    def value(self, new_val:str):
+        self._value = new_val if isinstance(new_val, str) else ""
 
     @property
     def core(self) -> str:
         """returns string without blank spaces at the begining and the end"""
-        return self.string.strip()
+        return self.value.strip()
 
     @property
     def email_normalized(self) -> str:
@@ -157,7 +158,6 @@ class StringHelpers:
         """
         Normalize a characters string.
         Args:
-            target_string (str): cadena de caracteres a normalizar.
             spaces (bool, optional): Indica si la cadena de caracteres incluye o no espacios. 
             Defaults to False.
         Returns:
@@ -365,3 +365,31 @@ class QueryParams:
         for w in self.warnings:
             resp.update(w) if isinstance(w, dict) else resp.update({w: "error"})
         return resp
+
+
+def create_user_access_token(jwt_id:str, user_id:int) -> str:
+    '''Function that creates a jwt for the user.
+    expected parameters:
+    - jwt_id: identifier of the jwt. generally is the user email as string.
+    - user_id: identifier of the user. this is the integer value stored in the database as pk.
+    '''
+    return create_access_token(
+        identity=jwt_id,
+        additional_claims={
+            "user_access_token": True,
+            "user_id": user_id
+        }
+    )
+
+
+def update_model(model, new_rows:dict) -> None:
+    '''update database table
+
+    parameters
+    - model (ORM instance to be updated)
+    - new_rows:dict (new values)
+    '''
+    for key, value in new_rows.items():
+        setattr(model, key, value)
+    
+    return None

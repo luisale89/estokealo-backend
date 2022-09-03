@@ -2,7 +2,7 @@ import os
 from flask import Flask
 
 def create_app(test_config=None):
-    app = Flask(__name__)
+    app = Flask(__name__, static_folder="build")
     if test_config is None:
         app.config.from_object(os.environ["FRONTEND_SETTINGS"])
 

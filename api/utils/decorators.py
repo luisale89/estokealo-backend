@@ -31,12 +31,12 @@ def json_required(required: dict = None):
                     }))
 
                 if required is not None:
-                    missing = [{r: "parameter not found in request body"} for r in required.keys() if r not in _json]
+                    missing = {r: "parameter not found in request body" for r in required.keys() if r not in _json}
                     if missing:
                         raise APIException.from_response(JSONResponse.bad_request(data=missing))
 
-                    wrong_types = [{r: f"invalid {required[r].__name__!r} instance"} for r in required.keys() if \
-                        not isinstance(_json[r], required[r])] if _json is not None else None
+                    wrong_types = {r: f"invalid {required[r].__name__!r} instance" for r in required.keys() if \
+                        not isinstance(_json[r], required[r])} if _json is not None else None
                     if wrong_types:
                         raise APIException.from_response(JSONResponse.bad_request(data=wrong_types))
 
@@ -103,7 +103,7 @@ def user_required():
                         "user_id": f"user_id: {user_id} not found or has been deleted"
                     }))
 
-                elif not user.is_enabled():
+                elif not user.is_enabled:
                     raise APIException.from_response(JSONResponse.user_not_active())
 
                 kwargs['user'] = user

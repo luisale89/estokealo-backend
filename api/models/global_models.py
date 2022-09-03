@@ -9,6 +9,7 @@ class RoleFunction(db.Model):
     description = db.Column(db.Text)
     access_level = db.Column(db.Integer, default=0)
     #relations
+    roles = db.relationship("Role", back_populates="role_function", lazy="dynamic")
 
     def __repr__(self) -> str:
         return f"RoleFunction(id={self.id})"
@@ -85,4 +86,4 @@ class RoleFunction(db.Model):
         if commit:
             db.session.commit()
 
-        pass
+        return None

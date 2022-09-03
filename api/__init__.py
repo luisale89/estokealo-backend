@@ -77,8 +77,8 @@ def check_if_token_revoked(jwt_header, jwt_payload) -> bool:
 def expired_token_msg(jwt_header, jwt_payload):
     rsp = JSONResponse(**JSONResponse.unauthorized(data={
         "jwt": "token has been revoked or has expired",
-        "jwt_header": jwt_header,
-        "jwt_payload": jwt_payload
+        "jwt_expires_epoch": jwt_payload["exp"],
+        "jwt_id": jwt_payload["sub"]
     }))
     return rsp.to_json()
 

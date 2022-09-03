@@ -12,7 +12,6 @@ def create_app(test_config=None):
 
     @app.route("/")
     def index():
-        print(app.config["DEVELOPMENT"])
         return render_template("index.html")
 
     return app

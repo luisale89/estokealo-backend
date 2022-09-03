@@ -13,7 +13,7 @@ class RedisClient:
     def set_connection(self):
         return Redis(self.REDIS_DB_PATH)
 
-    def add_jwt_to_blocklist(self, claims) -> tuple:
+    def add_jwt_to_blocklist(self, claims) -> None:
         '''
         function to save a jwt in redis
         * returns tuple -> (success:bool, msg:str)
@@ -28,4 +28,5 @@ class RedisClient:
 
         expires = jwt_exp - now_date
         rdb.set(jti, "", ex=expires)
-        return True, "jwt in blocklist"
+
+        return
