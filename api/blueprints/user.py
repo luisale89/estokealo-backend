@@ -174,9 +174,7 @@ def get_company_access(user, company_id):
         ))
 
     if not target_role.is_enabled:
-        raise APIException.from_response(JSONResponse.conflict(
-            {"company_id": "user is not active for this company"}
-        ))
+        raise APIException.from_response(JSONResponse.user_not_active())
 
     access_token = h.create_role_access_token(
         jwt_id=user.email, role_id=target_role.id
