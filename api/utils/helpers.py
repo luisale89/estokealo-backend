@@ -364,7 +364,7 @@ class QueryParams:
         resp = {}
         for w in self.warnings:
             resp.update(w) if isinstance(w, dict) else resp.update({w: "error"})
-        return resp
+        return {"qp_warnings": resp}
 
 
 def create_user_access_token(jwt_id:str, user_id:int) -> str:
@@ -378,6 +378,21 @@ def create_user_access_token(jwt_id:str, user_id:int) -> str:
         additional_claims={
             "user_access_token": True,
             "user_id": user_id
+        }
+    )
+
+
+def create_role_access_token(jwt_id:str, role_id:int) -> str:
+    '''Function that creates a jwt for the user.
+    expected parameters:
+    - jwt_id: identifier of the jwt. generally is the user email as string.
+    - user_id: identifier of the user. this is the integer value stored in the database as pk.
+    '''
+    return create_access_token(
+        identity=jwt_id,
+        additional_claims={
+            "role_access_token": True,
+            "role_id": role_id
         }
     )
 

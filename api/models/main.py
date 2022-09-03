@@ -1,10 +1,8 @@
 from api.extensions import db
 from api.utils import helpers as h
-from datetime import datetime, timedelta
+from datetime import datetime
 from werkzeug.security import generate_password_hash
 from sqlalchemy.dialects.postgresql import JSON
-from sqlalchemy.orm import backref
-from sqlalchemy import func
 
 #models
 from .global_models import *
@@ -84,7 +82,7 @@ class Role(db.Model):
     __tablename__="role"
     id = db.Column(db.Integer, primary_key=True)
     _relation_date = db.Column(db.DateTime, default=datetime.utcnow)
-    _inv_accepted = db.Column(db.Boolean, default=False)
+    _inv_status = db.Column(db.String(12), default="pending") #["pending", "accepted", "rejected"]
     _is_active = db.Column(db.Boolean, default=True)
     user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
     company_id = db.Column(db.Integer, db.ForeignKey("company.id"), nullable=False)
@@ -100,9 +98,9 @@ class Role(db.Model):
     def _base_serializer(self) -> dict:
         return {
             "ID": self.id,
-            "relation_date": h.normalize_datetime(self._relation_date),
+            "relation_date": h.datetime_formatter(self._relation_date),
             "is_active": self._is_active,
-            "is_invitation_accepted": self._inv_accepted
+            "invitation_status": self._inv_status
         }
 
     def serialize(self) -> dict:
@@ -112,16 +110,22 @@ class Role(db.Model):
 
     def serialize_all(self) -> dict:
         return {
-            self.__tablename__: self._base_serializer() | {
-                **self.user.serialize(),
-                **self.company.serialize(),
-                **self.role_function.serialize()
-            }
+            **self.serialize(),
+            **self.company.serialize(),
+            **self.role_function.serialize()
         }
 
     @property
     def is_enabled(self) -> bool:
-        return True if self._inv_accepted and self._is_active else False
+        return True if self._inv_status == "accepted" and self._is_active else False
+
+    @property
+    def inv_status(self):
+        return self._inv_status
+
+    @inv_status.setter
+    def inv_status(self, new_value:str):
+        self._inv_status = new_value
 
 
 class Company(db.Model):

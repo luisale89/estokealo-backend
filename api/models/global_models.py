@@ -33,19 +33,19 @@ class RoleFunction(db.Model):
         return db.session.query(RoleFunction.id).filter(RoleFunction.code == code).first()
 
     @classmethod
-    def add_defaults(cls):
-        commit = False
+    def add_defaults(cls, cls_to_return:str="owner"):
+        commit = {}
         owner = cls._get_rolefunc_by_code("owner")
         if not owner:
             newOwnerFunction = cls(
                 name= "propietario",
                 code= "owner",
                 description= "usuario puede administrar todos los aspectos de la aplicación",
-                level= 0
+                access_level= 0
             )
 
             db.session.add(newOwnerFunction)
-            commit = True
+            commit.update({"owner": newOwnerFunction})
 
         admin = cls._get_rolefunc_by_code("admin")
         if not admin:
@@ -53,11 +53,11 @@ class RoleFunction(db.Model):
                 name = "administrador",
                 code = "admin",
                 description= "puede administrar algunos aspectos de la aplicación, con algunas limitaciones",
-                level=1
+                access_level=1
             )
 
             db.session.add(newAdminFunction)
-            commit = True
+            commit.update({"admin": newAdminFunction})
 
         operator = cls._get_rolefunc_by_code("operator")
         if not operator:
@@ -65,11 +65,11 @@ class RoleFunction(db.Model):
                 name= "operador",
                 code= "operator",
                 description= "Este usuario solo puede realizar acciones asignadas y modificar algunos aspectos de la aplicación",
-                level=2
+                access_level=2
             )
 
             db.session.add(newOperatorFunction)
-            commit=True
+            commit.update({"operator": newOperatorFunction})
 
         viewer = cls._get_rolefunc_by_code("viewer")
         if not viewer:
@@ -77,13 +77,13 @@ class RoleFunction(db.Model):
                 name= "observador",
                 code= "viewer",
                 description="Este usuario es de solo lectura, y puede visualizar los aspectos públicos de la aplicación",
-                level= 99
+                access_level= 99
             )
 
             db.session.add(newViewerFunction)
-            commit = True
+            commit.update({"viewer": newViewerFunction})
 
         if commit:
             db.session.commit()
 
-        return None
+        return commit.get(cls_to_return, None)

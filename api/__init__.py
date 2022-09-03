@@ -8,7 +8,7 @@ from api.utils.exceptions import APIException
 from api.utils.responses import JSONResponse
 from api.services.redis_service import RedisClient
 #blueprints
-from api.blueprints import auth, api_manager
+from api.blueprints import auth, user
 
 
 def create_app(test_config=None):
@@ -30,7 +30,7 @@ def create_app(test_config=None):
 
     #API_BLUEPRINTS
     app.register_blueprint(auth.auth_bp, url_prefix="/auth")
-
+    app.register_blueprint(user.user_bp, url_prefix="/user")
     return app
 
 
