@@ -4,9 +4,11 @@ from api.utils.responses import JSONResponse
 from api.utils.exceptions import APIException
 from api.utils.db_operations import handle_db_error, update_row_content, Unaccent
 from api.utils.decorators import json_required, user_required
+from api.services.redis_service import RedisClient as rds
 from api.extensions import db
 from api.models.main import Company, Role, User
 from api.models.global_models import RoleFunction
+from flask_jwt_extended import get_jwt
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy import func
 
@@ -176,8 +178,11 @@ def get_company_access(user, company_id):
     if not target_role.is_enabled:
         raise APIException.from_response(JSONResponse.user_not_active())
 
+    rds().add_jwt_to_blocklist(get_jwt())
     access_token = h.create_role_access_token(
-        jwt_id=user.email, role_id=target_role.id
+        jwt_id=user.email, 
+        role_id=target_role.id, 
+        user_id=user.id
     )
 
     return JSONResponse(

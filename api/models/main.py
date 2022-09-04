@@ -49,6 +49,14 @@ class User(db.Model):
             }
         }
 
+    def serialize_public_info(self) -> dict:
+        return {
+            self.__tablename__: self._base_serializer() | {
+                "user_companies": list(map(lambda x: x.company.serialize(), 
+                filter(lambda x: x.is_enabled, self.roles.all()))),
+            }
+        }
+
     @property
     def is_enabled(self) -> bool:
         return self.signup_completed
@@ -130,7 +138,7 @@ class Role(db.Model):
 
 class Company(db.Model):
 
-    BASE_CURRENCY= {"name": "Dólar Estadounidense", "ISO": "USD", "Symbol": "$"}
+    BASE_CURRENCY= {"name": "Dólar Estadounidense", "iso": "USD", "symbol": "$"}
 
     __tablename__= "company"
     id = db.Column(db.Integer, primary_key=True)
@@ -166,10 +174,9 @@ class Company(db.Model):
                 "address": self.address.get("address", {}),
                 "currency": {
                     **self.currency_data.get("currency", {}),
-                    "rate": self.currency_rate,
-                    "base": self.BASE_CURRENCY
+                    "rate": self.currency_rate
                 },
-                "creation_date": h.normalize_datetime(self._created_at)
+                "creation_date": h.datetime_formatter(self._created_at)
             }
         }
 

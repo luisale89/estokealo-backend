@@ -9,7 +9,7 @@ from api.utils.decorators import json_required, user_required, verification_toke
 from api.services.email_service import Email_api_service as ems
 from api.services.redis_service import RedisClient as rds
 from api.extensions import db
-from api.models.main import User
+from api.models.main import Company, Role, User
 from sqlalchemy.exc import SQLAlchemyError
 from werkzeug.security import check_password_hash
 from flask_jwt_extended import create_access_token, get_jwt
@@ -37,7 +37,7 @@ def get_email_public_info():
         raise APIException.from_response(JSONResponse.not_found({"email": email.core}))
 
     return JSONResponse(data={
-        **user.serialize()
+        **user.serialize_public_info()
     }).to_json()
 
 
@@ -102,8 +102,7 @@ def validate_verification_code(claims, body):
         }
     )
     payload = {
-        "verified_token": verified_token,
-        "user": {}
+        "verified_token": verified_token
     }
     if user:
         payload.update({**user.serialize()})
@@ -232,13 +231,45 @@ def login_user(body):
     if not user:
         raise APIException.from_response(JSONResponse.not_found({"email": email}))
 
+    if not user.is_enabled:
+        raise APIException.from_response(JSONResponse.user_not_active())
+
     if not check_password_hash(user._password_hash, password.value):
         raise APIException.from_response(JSONResponse.wrong_password())
 
     payload = {
-        **user.serialize_all(),
+        **user.serialize(),
         "access_token": h.create_user_access_token(jwt_id=email.email_normalized, user_id=user.id)
     }
+
+    #if login want to be done including a specific role
+    company_id = body.get("company_id", None)
+    if company_id: #login with company
+        valid, msg = h.is_valid_id(company_id)
+        if not valid:
+            raise APIException.from_response(JSONResponse.bad_request(
+                {"company_id": msg}
+            ))
+
+        target_role = db.session.query(Role).select_from(User).\
+            join(User.roles).join(Role.company).filter(User.id == user.id, Company.id == company_id).first()
+        
+        if not target_role:
+            raise APIException.from_response(JSONResponse.not_found(
+                {"company_id": company_id}
+            ))
+
+        if not target_role.is_enabled:
+            raise APIException.from_response(JSONResponse.user_not_active())
+
+        payload.update({
+            "access_token": h.create_role_access_token(
+                jwt_id=user.email, 
+                role_id=target_role.id,
+                user_id=user.id
+            ),
+            **target_role.company.serialize()
+        })
 
     return JSONResponse(
         message="user logged in",
@@ -252,4 +283,4 @@ def login_user(body):
 def logout_user(user):
 
     rds().add_jwt_to_blocklist(get_jwt())
-    return JSONResponse("user session has been closed").to_json()
+    return JSONResponse(f"user {user.email!r} has been logged out").to_json()

@@ -382,7 +382,7 @@ def create_user_access_token(jwt_id:str, user_id:int) -> str:
     )
 
 
-def create_role_access_token(jwt_id:str, role_id:int) -> str:
+def create_role_access_token(jwt_id:str, role_id:int, user_id:int) -> str:
     '''Function that creates a jwt for the user.
     expected parameters:
     - jwt_id: identifier of the jwt. generally is the user email as string.
@@ -392,6 +392,8 @@ def create_role_access_token(jwt_id:str, role_id:int) -> str:
         identity=jwt_id,
         additional_claims={
             "role_access_token": True,
+            "user_access_token": True,
+            "user_id": user_id,
             "role_id": role_id
         }
     )
