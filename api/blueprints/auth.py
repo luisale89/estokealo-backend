@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import timedelta
 from random import randint
 from flask import Blueprint, request
 from api.utils import helpers as h

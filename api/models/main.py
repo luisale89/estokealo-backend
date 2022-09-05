@@ -147,7 +147,7 @@ class Company(db.Model):
     name = db.Column(db.String(64), nullable=False)
     timezone_name = db.Column(db.String(64), default="america/caracas")
     address = db.Column(JSON, default={"address": {}})
-    currency_data = db.Column(JSON, default={"currency": BASE_CURRENCY})
+    currency_data = db.Column(JSON, default={"currency_data": BASE_CURRENCY})
     currency_rate = db.Column(db.Float(), default=1.0)
     #relationships
     roles = db.relationship("Role", back_populates="company", lazy="dynamic")
@@ -173,7 +173,7 @@ class Company(db.Model):
                 "timezone_name": self.timezone_name,
                 "address": self.address.get("address", {}),
                 "currency": {
-                    **self.currency_data.get("currency", {}),
+                    **self.currency_data.get("currency_data", {}),
                     "rate": self.currency_rate
                 },
                 "creation_date": h.datetime_formatter(self._created_at)
