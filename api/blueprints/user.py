@@ -58,17 +58,23 @@ def get_user_companies(user):
     role_status = qp.get_first_value("status") #status: pending, accepted, rejected
 
     base_q = db.session.query(Role).filter(Role.user_id == user.id)
-
+    #filter 1
     if role_status:
         base_q = base_q.filter(Role._inv_status == role_status)
 
     all_roles = base_q.paginate(page, limit)
 
-    return JSONResponse(data={
-        "companies": list(map(lambda x: x.serialize_all(), all_roles.items)),
-        **qp.get_pagination_form(all_roles),
-        **qp.get_warings()
-    }).to_json()
+    return JSONResponse(
+        data={
+            "companies": list(map(lambda x: {
+                **x.serialize(),
+                **x.company.serialize(),
+                **x.role_function.serialize()
+            }, all_roles.items)),
+            **qp.get_pagination_form(all_roles),
+            **qp.get_warings()
+        }
+    ).to_json()
 
 
 @user_bp.route("/companies", methods=["POST"])
@@ -188,7 +194,7 @@ def get_company_access(user, company_id):
     return JSONResponse(
         message="company access granted",
         data={
-            "company_access_token": access_token,
+            "access_token": access_token,
             **target_role.serialize_all()
         }
     ).to_json()

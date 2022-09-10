@@ -13,7 +13,7 @@ class JSONResponse:
     - to_json() -> http JSON response
     """
 
-    def __init__(self, message="ok", result="success", status_code=200, data=None):
+    def __init__(self, message="ok", result="success", status_code=200, data=None) -> None:
         self.message = message
         self.result = result
         self.status_code = status_code

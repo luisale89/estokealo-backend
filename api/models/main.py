@@ -173,7 +173,7 @@ class Company(db.Model):
                 "timezone_name": self.timezone_name,
                 "address": self.address.get("address", {}),
                 "currency": {
-                    **self.currency_data.get("currency_data", {}),
+                    **self.currency_data.get("currency_data", self.BASE_CURRENCY),
                     "rate": self.currency_rate
                 },
                 "creation_date": h.datetime_formatter(self._created_at)

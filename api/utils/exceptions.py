@@ -5,7 +5,7 @@ from .responses import JSONResponse
 
 class APIException(Exception, JSONResponse):
 
-    def __init__(self, message, result="error", status_code=400, data=None):  # default code 400
+    def __init__(self, message, result="error", status_code=400, data=None) -> None:  # default code 400
         Exception.__init__(self)
         JSONResponse.__init__(self, message, result, status_code, data)
 

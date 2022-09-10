@@ -35,7 +35,7 @@ def normalize_datetime(date:datetime) -> Union[datetime, None]:
     return date
 
 
-def epoch_utc_to_datetime(epoch_utc:str) -> datetime:
+def epoch_utc_to_datetime(epoch_utc:float) -> datetime:
     '''
     Helper function to convert epoch timestamps into
     python datetime objects, in UTC
@@ -45,8 +45,8 @@ def epoch_utc_to_datetime(epoch_utc:str) -> datetime:
 
 def qr_encoder(payload:str) -> str:
     '''sign a string using itsdangerous Signer class'''
-    SECRET = os.environ.get("QR_SIGNER_SECRET")
-    QR_PREFIX = os.environ.get("QR_PREFIX")
+    SECRET = os.environ["QR_SIGNER_SECRET"]
+    QR_PREFIX = os.environ["QR_PREFIX"]
     signer = Signer(secret_key=SECRET)
 
     return signer.sign(f"{QR_PREFIX + payload}").decode("utf-8")
@@ -61,8 +61,8 @@ def qr_decoder(qrcode:str) -> Union[str, None]:
     if the decode process fails, returns None
     '''
 
-    SECRET = os.environ.get("QR_SIGNER_SECRET")
-    QR_PREFIX = os.environ.get("QR_PREFIX")
+    SECRET = os.environ["QR_SIGNER_SECRET"]
+    QR_PREFIX = os.environ["QR_PREFIX"]
     signer = Signer(secret_key=SECRET)
 
     try:
@@ -105,8 +105,8 @@ def validate_inputs(inputs:dict) -> dict:
 class StringHelpers:
     """StringHelpers utilities"""
 
-    def __init__(self, string:str=None) -> None:
-        self._value = string or ""
+    def __init__(self, string:str="") -> None:
+        self._value = string
 
     def __repr__(self) -> str:
         return f"StringHelpers(string:{self.value})"
@@ -169,7 +169,7 @@ class StringHelpers:
             return self.core
     
 
-    def is_valid_string(self, max_length: int = None) -> tuple:
+    def is_valid_string(self, max_length: int = 0) -> tuple:
         """
         function validates if a string is valid to be stored in the database.
         Args:

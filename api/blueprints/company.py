@@ -3,9 +3,9 @@ from api.utils import helpers as h
 from api.utils.responses import JSONResponse
 from api.utils.exceptions import APIException
 from api.utils.db_operations import handle_db_error, update_row_content, Unaccent
-from api.utils.decorators import json_required, role_required, user_required
+from api.utils.decorators import json_required, role_required
 from api.extensions import db
-from api.models.main import Company, Role, User
+from api.models.main import Company, Role
 from api.models.global_models import RoleFunction
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy import func
@@ -66,7 +66,7 @@ def get_company_users(role):
     page, limit = qp.get_pagination_params()
 
     base_q = db.session.query(Role).join(Role.company).filter(Company.id == role.company.id)
-    #filter #1
+    #filter 1
     if status: #["accepted", "rejected", "pending"]
         base_q = base_q.filter(Role._inv_status == status)
 
