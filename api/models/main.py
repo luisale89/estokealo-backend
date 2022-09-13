@@ -124,6 +124,14 @@ class Role(db.Model):
         }
 
     @property
+    def is_active(self) -> bool:
+        return self._is_active
+
+    @is_active.setter
+    def is_active(self, new_val:bool) -> None:
+        self._is_active = new_val
+
+    @property
     def is_enabled(self) -> bool:
         return True if self._inv_status == "accepted" and self._is_active else False
 

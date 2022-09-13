@@ -5,7 +5,7 @@ from flask import abort
 from sqlalchemy.sql.functions import ReturnTypeFromArgs
 
 
-def update_row_content(model, new_row_data: dict) -> tuple:
+def update_row_content(model, new_row_data: dict) -> tuple[dict, dict]:
     """
     Funcion para actualizar el contenido de una fila de cualquier tabla en la bd.
     Recorre cada item del parametro <new_row_data> y determina si el nombre coincide con el nombre de una de las
@@ -70,7 +70,7 @@ def update_row_content(model, new_row_data: dict) -> tuple:
     return to_update, warnings
 
 
-def handle_db_error(error):
+def handle_db_error(error) -> None:
     """handle SQLAlchemy Exceptions and errors"""
     db.session.rollback()
     abort(500, f"{error}")

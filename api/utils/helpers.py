@@ -18,13 +18,13 @@ def datetime_formatter(date:datetime) -> str:
     return date.strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
-def normalize_datetime(date:datetime) -> Union[datetime, None]:
+def normalize_datetime(date:str) -> Union[datetime, None]:
     '''
     Helper function to normalize datetime and store it into the database
     The normalized datetime is naive, and utc based
     '''
     try:
-        dt = parse(datetime)
+        dt = parse(date)
         if dt.tzinfo is not None:
             date = dt.astimezone(timezone.utc).replace(tzinfo=None)
         else:
@@ -35,7 +35,7 @@ def normalize_datetime(date:datetime) -> Union[datetime, None]:
     return date
 
 
-def epoch_utc_to_datetime(epoch_utc:float) -> datetime:
+def epoch_utc_to_datetime(epoch_utc:str) -> datetime:
     '''
     Helper function to convert epoch timestamps into
     python datetime objects, in UTC
@@ -73,7 +73,7 @@ def qr_decoder(qrcode:str) -> Union[str, None]:
         return None
 
 
-def is_valid_id(tar_int:int) -> tuple:
+def is_valid_id(tar_int:int) -> tuple[bool, str]:
     """check if 'integer' parameter is a valid identifier value"""
     if not isinstance(tar_int, int) or tar_int < 0:
         return False, "parameter is not a valid identifier value, read documentation"
@@ -169,7 +169,7 @@ class StringHelpers:
             return self.core
     
 
-    def is_valid_string(self, max_length: int = 0) -> tuple:
+    def is_valid_string(self, max_length: int = 0) -> tuple[bool, str]:
         """
         function validates if a string is valid to be stored in the database.
         Args:
@@ -189,7 +189,7 @@ class StringHelpers:
         return True, "string validated"
 
 
-    def is_valid_email(self) -> tuple:
+    def is_valid_email(self) -> tuple[bool, str]:
         """
         Validates if a string has a valid email format
         Args:
@@ -212,7 +212,7 @@ class StringHelpers:
         return True, "valid email format"
 
 
-    def is_valid_pw(self) -> tuple:
+    def is_valid_pw(self) -> tuple[bool, str]:
         """
         Check if a password meets the minimum security parameters
         defined for this application.
@@ -324,7 +324,7 @@ class QueryParams:
         return [int(v) for v in values if StringHelpers.to_int(v)]
 
 
-    def get_pagination_params(self) -> tuple:
+    def get_pagination_params(self) -> tuple[int, int]:
         """
         function to get pagination parameters from request
         default values are given if no parameter is in request.
