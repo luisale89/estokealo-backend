@@ -22,7 +22,7 @@ user_bp = Blueprint("user_pb", __name__)
 def get_user_info(user):
     '''return user info'''
     return JSONResponse(
-        message="user info",
+        message="user profile",
         data=user.serialize_all()
     ).to_json()
 
@@ -67,9 +67,9 @@ def get_user_companies(user):
     return JSONResponse(
         data={
             "companies": list(map(lambda x: {
-                **x.serialize(),
                 **x.company.serialize(),
-                **x.role_function.serialize()
+                "role": x.serialize(),
+                "role_function": x.role_function.serialize()
             }, all_roles.items)),
             **qp.get_pagination_form(all_roles),
             **qp.get_warings()

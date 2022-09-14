@@ -105,7 +105,7 @@ def validate_verification_code(claims, body):
         "verified_token": verified_token
     }
     if user:
-        payload.update({**user.serialize()})
+        payload.update({"user": user.serialize()})
 
     return JSONResponse(
         "verification process successfully completed",
@@ -238,7 +238,7 @@ def login_user(body):
         raise APIException.from_response(JSONResponse.wrong_password())
 
     payload = {
-        **user.serialize(),
+        "user": user.serialize(),
         "access_token": h.create_user_access_token(jwt_id=email.email_normalized, user_id=user.id)
     }
 
@@ -268,7 +268,7 @@ def login_user(body):
                 role_id=target_role.id,
                 user_id=user.id
             ),
-            **target_role.company.serialize()
+            "company": target_role.company.serialize()
         })
 
     return JSONResponse(

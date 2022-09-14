@@ -76,9 +76,9 @@ def get_company_users(role):
     return JSONResponse(
         data={
             "users": list(map(lambda x: {
-                **x.serialize(),
                 **x.user.serialize(),
-                **x.role_function.serialize()
+                "role": x.serialize(),
+                "role_function": x.role_function.serialize()
             }, all_roles.items)),
             **qp.get_pagination_form(all_roles),
             **qp.get_warings()

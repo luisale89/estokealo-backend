@@ -30,32 +30,28 @@ class User(db.Model):
             "ID": self.id,
             "first_name": self.first_name,
             "last_name": self.last_name,
+            "email": self._email,
             "signup_completed": self._signup_completed
         }
     
     def serialize(self) -> dict:
-        return {
-            self.__tablename__: self._base_serializer()
-        }
+        return self._base_serializer()
 
     def serialize_all(self) -> dict:
         return {
-            self.__tablename__: self._base_serializer() | {
-                "signup_date": h.datetime_formatter(self._signup_date),
-                "phone": self.phone,
-                "email": self._email,
-                "profile_image": self._profile_image,
-                "address": self.address.get("address", {})
+            **self._base_serializer(),
+            "signup_date": h.datetime_formatter(self._signup_date),
+            "phone": self.phone,
+            "profile_image": self._profile_image,
+            "address": self.address.get("address", {})
             }
-        }
 
     def serialize_public_info(self) -> dict:
         return {
-            self.__tablename__: self._base_serializer() | {
-                "user_companies": list(map(lambda x: x.company.serialize(), 
+            self.__tablename__: self._base_serializer(),
+            "companies": list(map(lambda x: x.company.serialize(), \
                 filter(lambda x: x.is_enabled, self.roles.all()))),
             }
-        }
 
     @property
     def is_enabled(self) -> bool:
@@ -112,15 +108,14 @@ class Role(db.Model):
         }
 
     def serialize(self) -> dict:
-        return {
-            self.__tablename__: self._base_serializer()
-        }
+        return self._base_serializer()
 
     def serialize_all(self) -> dict:
         return {
-            **self.serialize(),
-            **self.company.serialize(),
-            **self.role_function.serialize()
+            **self._base_serializer(),
+            "company": self.company.serialize(),
+            "role_function": self.role_function.serialize(),
+            "user": self.user.serialize()
         }
 
     @property
@@ -171,21 +166,18 @@ class Company(db.Model):
         }
 
     def serialize(self):
-        return {
-            self.__tablename__: self._base_serializer()
-        }
+        return self._base_serializer()
 
     def serialize_all(self):
         return {
-            self.__tablename__: self._base_serializer() | {
-                "timezone_name": self.timezone_name,
-                "address": self.address.get("address", {}),
-                "currency": {
-                    **self.currency_data.get("currency_data", self.BASE_CURRENCY),
-                    "rate": self.currency_rate
-                },
-                "creation_date": h.datetime_formatter(self._created_at)
-            }
+            **self._base_serializer(),
+            "timezone_name": self.timezone_name,
+            "address": self.address.get("address", {}),
+            "currency": {
+                **self.currency_data.get("currency_data", self.BASE_CURRENCY),
+                "rate": self.currency_rate
+            },
+            "creation_date": h.datetime_formatter(self._created_at)
         }
 
     def dolarize(self, value:float) -> float:

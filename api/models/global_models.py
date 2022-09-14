@@ -24,9 +24,7 @@ class RoleFunction(db.Model):
         }
 
     def serialize(self):
-        return {
-            self.__tablename__: self._base_serializer()
-        }
+        return self._base_serializer()
     
     @staticmethod
     def _get_rolefunc_by_code(code:str):
