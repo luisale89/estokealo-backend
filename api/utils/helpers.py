@@ -351,11 +351,11 @@ class QueryParams:
         """
         return {
             "pagination": {
-                "pages": pag_instance.pages,
-                "has_next": pag_instance.has_next,
-                "has_prev": pag_instance.has_prev,
-                "current_page": pag_instance.page,
-                "total_items": pag_instance.total
+                "totalPages": pag_instance.pages,
+                "hasNextPage": pag_instance.has_next,
+                "hasPrevPage": pag_instance.has_prev,
+                "currentPage": pag_instance.page,
+                "totalItems": pag_instance.total
             }
         }
 
@@ -364,7 +364,7 @@ class QueryParams:
         resp = {}
         for w in self.warnings:
             resp.update(w) if isinstance(w, dict) else resp.update({w: "error"})
-        return {"qp_warnings": resp}
+        return {"queryParametersFeedback": resp}
 
 
 def create_user_access_token(jwt_id:str, user_id:int) -> str:

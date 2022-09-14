@@ -68,8 +68,7 @@ def get_user_companies(user):
         data={
             "companies": list(map(lambda x: {
                 **x.company.serialize(),
-                "role": x.serialize(),
-                "role_function": x.role_function.serialize()
+                "role": x.serialize()
             }, all_roles.items)),
             **qp.get_pagination_form(all_roles),
             **qp.get_warings()
@@ -88,7 +87,7 @@ def create_company(user, body):
     
     # #check if user has already a company under his name
     # owned_company = db.session.query(Company.id).select_from(User).join(User.roles).\
-    #     join(Role.company).filter(User.id == user.id).first()
+    #     join(Role.company).filter(User.id == user.id, Role.code == "owner").first()
     # if owned_company:
     #     raise APIException.from_response(JSONResponse.conflict(
     #         {"user": "user already has a company on his name"})

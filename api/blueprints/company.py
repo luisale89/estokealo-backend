@@ -77,8 +77,7 @@ def get_company_users(role):
         data={
             "users": list(map(lambda x: {
                 **x.user.serialize(),
-                "role": x.serialize(),
-                "role_function": x.role_function.serialize()
+                "role": x.serialize()
             }, all_roles.items)),
             **qp.get_pagination_form(all_roles),
             **qp.get_warings()
@@ -237,7 +236,7 @@ def delete_user_from_company(role, user_id):
         db.session.commit()
 
     except IntegrityError as ie:
-        raise APIException.from_response(JSONResponse.conflict({"user": f"{ie}"}))
+        raise APIException.from_response(JSONResponse.conflict({"role": f"{ie}"}))
 
     except SQLAlchemyError as e:
         handle_db_error(e)

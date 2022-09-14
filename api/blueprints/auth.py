@@ -154,7 +154,10 @@ def signup_user(body, claims):
 
         return JSONResponse(
             message="user has completed signup process",
-            data={**user.serialize_all(), "access_token": access_token}
+            data={
+                **user.serialize_all(), 
+                "accessToken": access_token
+            }
         ).to_json()
 
     #if request.method == "POST"
@@ -175,7 +178,7 @@ def signup_user(body, claims):
         status_code=201,
         data={
             **new_user.serialize_all(),
-            "access_token": access_token
+            "accessToken": access_token
         }
     ).to_json()
 
@@ -238,8 +241,8 @@ def login_user(body):
         raise APIException.from_response(JSONResponse.wrong_password())
 
     payload = {
-        "user": user.serialize(),
-        "access_token": h.create_user_access_token(jwt_id=email.email_normalized, user_id=user.id)
+        **user.serialize(),
+        "accessToken": h.create_user_access_token(jwt_id=email.email_normalized, user_id=user.id)
     }
 
     #if login want to be done including a specific role
@@ -263,7 +266,7 @@ def login_user(body):
             raise APIException.from_response(JSONResponse.user_not_active())
 
         payload.update({
-            "access_token": h.create_role_access_token(
+            "accessToken": h.create_role_access_token(
                 jwt_id=user.email, 
                 role_id=target_role.id,
                 user_id=user.id

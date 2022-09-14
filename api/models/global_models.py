@@ -20,7 +20,7 @@ class RoleFunction(db.Model):
             "name": self.name,
             "code": self.code,
             "description": self.description,
-            "access_level": self.access_level
+            "accessLevel": self.access_level
         }
 
     def serialize(self):
