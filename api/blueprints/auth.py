@@ -241,7 +241,7 @@ def login_user(body):
         raise APIException.from_response(JSONResponse.wrong_password())
 
     payload = {
-        **user.serialize(),
+        "user": user.serialize(),
         "accessToken": h.create_user_access_token(jwt_id=email.email_normalized, user_id=user.id)
     }
 
@@ -271,7 +271,7 @@ def login_user(body):
                 role_id=target_role.id,
                 user_id=user.id
             ),
-            "company": target_role.company.serialize()
+            **target_role.serialize_all()
         })
 
     return JSONResponse(
