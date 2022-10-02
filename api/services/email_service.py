@@ -1,4 +1,3 @@
-import email
 import os, requests
 from requests.exceptions import RequestException
 
@@ -33,7 +32,7 @@ class Email_api_service:
         return {
             "Accept": "application/json",
             "Content-Type": "application/json",
-            "api-key": self.API_KEY
+            "api-key": self.SMTP_API_KEY
         }
 
     @property

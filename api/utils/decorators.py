@@ -48,7 +48,7 @@ def json_required(required: dict = None):
 
 
 # decorator to grant access to general users.
-def role_required(level: int = 99):  # role-level requiried for the target endpoint
+def role_required(level: int = 99):  # role-level required for the target endpoint
     def wrapper(fn):
         @functools.wraps(fn)
         def decorator(*args, **kwargs):

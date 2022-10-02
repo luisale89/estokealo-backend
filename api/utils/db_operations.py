@@ -51,7 +51,7 @@ def update_row_content(model, new_row_data: dict) -> tuple[dict, dict]:
                     continue  # continue with the next loop
 
             if isinstance(content, str):
-                sh = h.StringHelpers(string=content)
+                sh = h.StringHelpers(value=content)
                 valid, msg = sh.is_valid_string(max_length=data.type.length)
                 if not valid:
                     warnings.update({row: msg})

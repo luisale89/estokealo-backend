@@ -8,21 +8,21 @@ from flask_jwt_extended import create_access_token
 
 
 def datetime_formatter(date:datetime) -> str:
-    '''
+    """
     returns a string that represents datetime stored in the database in UTC timezone
-    datetime represetnation format: %Y-%m-%dT%H:%M:%S%z
+    datetime representation format: %Y-%m-%dT%H:%M:%S%z
 
     * Parameters
     <datetime> a valid datetime instance
-    '''
+    """
     return date.strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 def normalize_datetime(date:str) -> Union[datetime, None]:
-    '''
+    """
     Helper function to normalize datetime and store it into the database
     The normalized datetime is naive, and utc based
-    '''
+    """
     try:
         dt = parse(date)
         if dt.tzinfo is not None:
@@ -35,16 +35,16 @@ def normalize_datetime(date:str) -> Union[datetime, None]:
     return date
 
 
-def epoch_utc_to_datetime(epoch_utc:str) -> datetime:
-    '''
+def epoch_utc_to_datetime(epoch_utc:float) -> datetime:
+    """
     Helper function to convert epoch timestamps into
     python datetime objects, in UTC
-    '''
+    """
     return datetime.utcfromtimestamp(epoch_utc)
 
 
 def qr_encoder(payload:str) -> str:
-    '''sign a string using itsdangerous Signer class'''
+    """sign a string using itsdangerous Signer class"""
     SECRET = os.environ["QR_SIGNER_SECRET"]
     QR_PREFIX = os.environ["QR_PREFIX"]
     signer = Signer(secret_key=SECRET)
@@ -53,13 +53,13 @@ def qr_encoder(payload:str) -> str:
 
 
 def qr_decoder(qrcode:str) -> Union[str, None]:
-    '''
-    decode data to 
+    """
+    decode data to
     get data inside a valid qrcode-signed string.
 
     returns the raw data inside the signed string.
     if the decode process fails, returns None
-    '''
+    """
 
     SECRET = os.environ["QR_SIGNER_SECRET"]
     QR_PREFIX = os.environ["QR_PREFIX"]
@@ -105,11 +105,14 @@ def validate_inputs(inputs:dict) -> dict:
 class StringHelpers:
     """StringHelpers utilities"""
 
-    def __init__(self, string:str="") -> None:
-        self._value = string
+    def __init__(self, value:str= "") -> None:
+        self._value = value
 
     def __repr__(self) -> str:
-        return f"StringHelpers(string:{self.value})"
+        return f"StringHelpers(value={self.value})"
+
+    def __str__(self) -> str:
+        return f"{self.value!r}"
 
     def __bool__(self) -> bool:
         return True if self.value else False
@@ -124,7 +127,7 @@ class StringHelpers:
 
     @property
     def core(self) -> str:
-        """returns string without blank spaces at the begining and the end"""
+        """returns string without blank spaces at the beginning and the end"""
         return self.value.strip()
 
     @property
@@ -173,9 +176,7 @@ class StringHelpers:
         """
         function validates if a string is valid to be stored in the database.
         Args:
-            string (str): string to validate.
             max_length (int): max length of the string.
-            empty (bool): True if the string could be empty.
         Returns:
             (invalid:bool, str:error message)
         """
@@ -192,12 +193,10 @@ class StringHelpers:
     def is_valid_email(self) -> tuple[bool, str]:
         """
         Validates if a string has a valid email format
-        Args:
-            email (str): email to validate
         Returns tuple:
             (valid:bool, str:error message)
                 valid=True if the email is valid
-                valid=False if the email is invalid
+                False if the email is invalid
         """
         if len(self.core) > 320:
             return False, "invalid email length, max is 320 chars"
@@ -216,8 +215,6 @@ class StringHelpers:
         """
         Check if a password meets the minimum security parameters
         defined for this application.
-        Args:
-            password (str): password to validate.
         Returns tuple:
             (invalid:bool, str:error message)
         """
@@ -233,7 +230,8 @@ class StringHelpers:
     @staticmethod
     def random_password(length: int = 16) -> str:
         """
-        function creates a random password, default length is 16 characters. pass in required length as an integer parameter
+        function creates a random password, default length is 16 characters.
+        pass in required length as an integer parameter
         """
         lower = string.ascii_lowercase
         upper = string.ascii_uppercase
@@ -247,7 +245,7 @@ class StringHelpers:
 
 
 class QueryParams:
-    """class that represents the query paramteres in request."""
+    """class that represents the query parameters in request."""
 
     def __init__(self, params) -> None:
         self.params_flat = params.to_dict()
@@ -346,7 +344,7 @@ class QueryParams:
     @staticmethod
     def get_pagination_form(pag_instance) -> dict:
         """
-        Receive a pagination instance from flasksqlalchemy, 
+        Receive a pagination instance from flask-sqlalchemy,
         returns a dict with pagination data in a dict, set to return to the user.
         """
         return {
@@ -368,11 +366,12 @@ class QueryParams:
 
 
 def create_user_access_token(jwt_id:str, user_id:int) -> str:
-    '''Function that creates a jwt for the user.
+    """
+    Function that creates a jwt for the user.
     expected parameters:
     - jwt_id: identifier of the jwt. generally is the user email as string.
     - user_id: identifier of the user. this is the integer value stored in the database as pk.
-    '''
+    """
     return create_access_token(
         identity=jwt_id,
         additional_claims={
@@ -383,11 +382,12 @@ def create_user_access_token(jwt_id:str, user_id:int) -> str:
 
 
 def create_role_access_token(jwt_id:str, role_id:int, user_id:int) -> str:
-    '''Function that creates a jwt for the user.
+    """
+    Function that creates a jwt for the role.
     expected parameters:
     - jwt_id: identifier of the jwt. generally is the user email as string.
     - user_id: identifier of the user. this is the integer value stored in the database as pk.
-    '''
+    """
     return create_access_token(
         identity=jwt_id,
         additional_claims={
@@ -400,12 +400,13 @@ def create_role_access_token(jwt_id:str, role_id:int, user_id:int) -> str:
 
 
 def update_model(model, new_rows:dict) -> None:
-    '''update database table
+    """
+    update database table
 
     parameters
     - model (ORM instance to be updated)
     - new_rows:dict (new values)
-    '''
+    """
     for key, value in new_rows.items():
         setattr(model, key, value)
     

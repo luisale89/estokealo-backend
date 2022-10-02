@@ -21,7 +21,7 @@ auth_bp = Blueprint("auth_bp", __name__)
 @auth_bp.route("/email-public-info", methods=["GET"])
 @json_required()
 def get_email_public_info():
-    '''public endpoint'''
+    """Public Endpoint"""
     qp = h.QueryParams(request.args)
     email = h.StringHelpers(qp.get_first_value("email"))
 
@@ -123,12 +123,12 @@ def signup_user(body, claims):
     invalids = h.validate_inputs({
         "password": password.is_valid_pw()
     })
-    newRows, invalid_body = update_row_content(User, body)
+    new_rows, invalid_body = update_row_content(User, body)
     invalids.update(invalid_body)
     if invalids:
         raise APIException.from_response(JSONResponse.bad_request(invalids))
 
-    newRows.update({
+    new_rows.update({
         "email": email,
         "password": password.core,
         "signup_completed": True
@@ -145,7 +145,7 @@ def signup_user(body, claims):
             raise APIException.from_response(JSONResponse.conflict({"email": email}))
 
         try:
-            h.update_model(user, newRows)
+            h.update_model(user, new_rows)
             db.session.commit()
         except SQLAlchemyError as e:
             handle_db_error(e)
@@ -164,7 +164,7 @@ def signup_user(body, claims):
     if user: #if user already exists in the database
         raise APIException.from_response(JSONResponse.conflict({"email": email}))
 
-    new_user = User(**newRows)
+    new_user = User(**new_rows)
     try:
         db.session.add(new_user)
         db.session.commit()

@@ -20,7 +20,7 @@ user_bp = Blueprint("user_pb", __name__)
 @json_required()
 @user_required()
 def get_user_info(user):
-    '''return user info'''
+    """return user info"""
     return JSONResponse(
         message="user profile",
         data=user.serialize_all()
@@ -31,7 +31,7 @@ def get_user_info(user):
 @json_required()
 @user_required()
 def update_user_info(user, body):
-    '''update user info'''
+    """update user info"""
     newRows, invalids = update_row_content(User, body)
     if invalids:
         raise APIException.from_response(JSONResponse.bad_request(invalids))
@@ -52,7 +52,7 @@ def update_user_info(user, body):
 @json_required()
 @user_required()
 def get_user_companies(user):
-    '''get all user companies, from invitations and created'''
+    """get all user companies, from invitations or the ones that have been created"""
     qp = h.QueryParams(request.args)
     page, limit = qp.get_pagination_params()
     role_status = qp.get_first_value("status") #status: pending, accepted, rejected

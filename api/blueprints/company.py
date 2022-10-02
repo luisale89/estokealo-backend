@@ -30,12 +30,12 @@ def get_company(role):
 @role_required(level=1)
 def update_company(role, body):
 
-    newRows, invalids = update_row_content(Company, body)
+    new_rows, invalids = update_row_content(Company, body)
     if invalids:
         raise APIException.from_response(JSONResponse.bad_request(invalids))
 
-    if "name" in newRows:
-        company_name = h.StringHelpers(newRows.get("name"))
+    if "name" in new_rows:
+        company_name = h.StringHelpers(new_rows.get("name"))
         name_exists = db.session.query(Company.id).\
             filter(Unaccent(func.lower(Company.name)) == company_name.unaccent.lower()).\
                 filter(Company.id != role.company.id).first()
@@ -46,7 +46,7 @@ def update_company(role, body):
             ))
 
     try:
-        h.update_model(role.company, newRows)
+        h.update_model(role.company, new_rows)
         db.session.commit()
     except SQLAlchemyError as e:
         handle_db_error(e)
@@ -110,7 +110,7 @@ def invite_user(role, body):
     target_user = db.session.query(User).filter(User._email == email.value).first()
 
     if not target_user:
-        #user to invite does not exists in the app...
+        #user to invite does not exist in the app...
         success, msg = ems.user_invitation(
             email_to=email.email_normalized,
             company_name=role.company.name

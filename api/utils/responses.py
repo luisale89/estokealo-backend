@@ -26,7 +26,7 @@ class JSONResponse:
         rv = {
             "message": self.message,
             "result": self.result,
-            "data": self.data
+            "payload": self.data
         }
         return rv
 
