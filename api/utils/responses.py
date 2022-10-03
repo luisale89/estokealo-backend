@@ -1,5 +1,4 @@
-from flask import jsonify
-
+from flask import jsonify, Response
 
 class JSONResponse:
     """
@@ -20,7 +19,11 @@ class JSONResponse:
         self.data = dict(data or ())
 
     def __repr__(self) -> str:
-        return f'JSONResponse(status_code={self.status_code})'
+        return f"JSONResponse(" \
+               f"message={self.message}, " \
+               f"result={self.result}, " \
+               f"status_code={self.status_code}" \
+               f"data={self.data})"
 
     def serialize(self) -> dict:
         rv = {
@@ -30,7 +33,7 @@ class JSONResponse:
         }
         return rv
 
-    def to_json(self):
+    def to_json(self) -> tuple[Response, int]:
         return jsonify(self.serialize()), self.status_code
 
     @staticmethod

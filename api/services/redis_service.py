@@ -20,7 +20,7 @@ class RedisClient:
         """
         rdb = self.set_connection()
         jti = claims["jti"]
-        jwt_exp = h.epoch_utc_to_datetime(claims["exp"])
+        jwt_exp = h.convert_utc_epoch_to_datetime(claims["exp"])
         now_date = datetime.datetime.utcnow()
 
         if jwt_exp < now_date:

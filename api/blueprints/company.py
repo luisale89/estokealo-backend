@@ -37,7 +37,7 @@ def update_company(role, body):
     if "name" in new_rows:
         company_name = h.StringHelpers(new_rows.get("name"))
         name_exists = db.session.query(Company.id).\
-            filter(Unaccent(func.lower(Company.name)) == company_name.unaccent.lower()).\
+            filter(Unaccent(func.lower(Company.name)) == company_name.as_unaccent_word.lower()).\
                 filter(Company.id != role.company.id).first()
 
         if name_exists:
@@ -46,7 +46,7 @@ def update_company(role, body):
             ))
 
     try:
-        h.update_model(role.company, new_rows)
+        h.update_database_model(role.company, new_rows)
         db.session.commit()
     except SQLAlchemyError as e:
         handle_db_error(e)
@@ -112,7 +112,7 @@ def invite_user(role, body):
     if not target_user:
         #user to invite does not exist in the app...
         success, msg = ems.user_invitation(
-            email_to=email.email_normalized,
+            email_to=email.as_normalized_email,
             company_name=role.company.name
         ).send_email()
         if not success:
@@ -120,8 +120,8 @@ def invite_user(role, body):
 
         try:
             new_user = User(
-                email = email.email_normalized,
-                password = h.StringHelpers.random_password(),
+                email = email.as_normalized_email,
+                password = h.create_random_password(),
                 signup_completed = False
             )
             new_role = Role(
@@ -143,7 +143,7 @@ def invite_user(role, body):
         raise APIException.from_response(JSONResponse.conflict({"email": email.value}))
 
     success, msg = ems.user_invitation(
-        email_to=email.email_normalized,
+        email_to=email.as_normalized_email,
         company_name=role.company.name,
         user_name=target_user.first_name
     ).send_email()
@@ -201,7 +201,7 @@ def update_user_role(role, body:dict, user_id:int):
         new_rows.update({"role_function_id": new_function_id})
 
     try:
-        h.update_model(target_role, new_rows=new_rows)
+        h.update_database_model(target_role, new_rows=new_rows)
         db.session.commit()
 
     except SQLAlchemyError as e:

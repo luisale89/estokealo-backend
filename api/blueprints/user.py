@@ -37,7 +37,7 @@ def update_user_info(user, body):
         raise APIException.from_response(JSONResponse.bad_request(invalids))
 
     try:
-        h.update_model(user, newRows)
+        h.update_database_model(user, newRows)
         db.session.commit()
     except SQLAlchemyError as e:
         handle_db_error(e)
@@ -96,7 +96,7 @@ def create_company(user, body):
     #check if name is available among all names in the app
     company_name = h.StringHelpers(newRows.get("name"))
     name_exists = db.session.query(Company.id).\
-        filter(Unaccent(func.lower(Company.name)) == company_name.unaccent.lower()).first()
+        filter(Unaccent(func.lower(Company.name)) == company_name.as_unaccent_word.lower()).first()
     if name_exists:
         raise APIException.from_response(JSONResponse.conflict(
             {"name": company_name.value}

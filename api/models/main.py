@@ -3,6 +3,7 @@ from api.utils import helpers as h
 from datetime import datetime
 from werkzeug.security import generate_password_hash
 from sqlalchemy.dialects.postgresql import JSON
+from typing import Union
 
 #models
 from .global_models import *
@@ -49,9 +50,20 @@ class User(db.Model):
     def serialize_public_info(self) -> dict:
         return {
             self.__tablename__: self._base_serializer(),
-            "companies": list(map(lambda x: x.company.serialize(), \
+            "companies": list(map(lambda x: x.company.serialize(),
                 filter(lambda x: x.is_enabled, self.roles.all()))),
             }
+
+    @classmethod
+    def filer_user(cls, email:str = "", user_id:int = 0) -> Union[object, None]:
+        """
+        Filter a user instance by its email address or id
+        """
+        user = db.session.query(cls)
+        if user_id:
+            return user.get(id)
+
+        return user.filter(User._email == email).first()
 
     @property
     def is_enabled(self) -> bool:
@@ -67,7 +79,7 @@ class User(db.Model):
 
     @property
     def password(self):
-        raise AttributeError("Can't view user's password")
+        return self._password_hash
 
     @password.setter
     def password(self, password):
@@ -184,7 +196,7 @@ class Company(db.Model):
         }
 
     def dolarize(self, value:float) -> float:
-        ''' Convert 'price' parameter to the equivalent of the base currency'''
+        """ Convert 'price' parameter to the equivalent of the base currency"""
         if self.currency_rate:
             return round(value / self.currency_rate, 2)
 

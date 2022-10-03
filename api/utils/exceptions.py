@@ -10,7 +10,7 @@ class APIException(Exception, JSONResponse):
         JSONResponse.__init__(self, message, result, status_code, data)
 
     @classmethod
-    def from_response(cls, response:dict):
+    def from_response(cls, response:dict) -> object:
         return cls(
             message=response.get("message", "something went wrong..."),
             result=response.get("result", "internal_server_error"),
