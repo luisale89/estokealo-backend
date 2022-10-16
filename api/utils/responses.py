@@ -39,41 +39,43 @@ class JSONResponse:
     @staticmethod
     def bad_request(data:dict={}) -> dict:
         '''status_code: 400'''
-        result = "bad_request"
+        status_code = 400
         return {
             "message": "bad request, check your inputs and try again",
-            "result": result,
-            "status_code": 400,
-            "data": {result: data}
+            "result": status_code,
+            "status_code": status_code,
+            "data": {status_code: data}
         }
 
     @staticmethod
     def unauthorized(data:dict={}) -> dict:
         '''status_code: 401'''
-        result = "unauthorized"
+        status_code = 401
         return {
             "message": "user's authorization is invalid",
-            "result": result,
-            "status_code": 401,
-            "data": {result: data}
+            "result": status_code,
+            "status_code": status_code,
+            "data": {status_code: data}
         }
 
     @staticmethod
     def user_not_active() -> dict:
         '''status_code: 402'''
+        status_code = 402
         return {
             "message": "user is not active or has not completed validation process",
-            "result": "user_not_active",
-            "status_code": 402,
+            "result": status_code,
+            "status_code": status_code,
         }
 
     @staticmethod
     def wrong_password() -> dict:
         '''status_code: 403'''
+        status_code = 403
         return {
             "message": "wrog password, check your inputs and try again",
-            "result": "wrong_password",
-            "status_code": 403,
+            "result": status_code,
+            "status_code": status_code,
         }
 
     @staticmethod
@@ -90,43 +92,45 @@ class JSONResponse:
     @staticmethod
     def not_acceptable(data:dict={}) -> dict:
         '''status_code: 406'''
-        result = "not_acceptable"
+        status_code = 406
         return {
             "message": "invalid configuration in request parameters",
-            "result": result,
-            "status_code": 406,
-            "data": {result: data}
+            "result": status_code,
+            "status_code": status_code,
+            "data": {status_code: data}
         }
 
     @staticmethod
     def conflict(data:dict={}) -> dict:
         '''status_code: 409'''
-        result = "conflict"
+        status_code = 409
         return {
             "message": "data already exists in the database",
-            "result": result,
-            "status_code": 409,
-            "data": {result: data}
+            "result": status_code,
+            "status_code": status_code,
+            "data": {status_code: data}
         }
 
     @staticmethod
     def permanently_deleted(data:dict={}) -> dict:
         '''status_code: 410'''
         result ="permanently_deleted"
+        status_code = 410
         return {
             "message": "requested resource has been deleted",
-            "result": result,
-            "status_code": 410,
-            "data": {result: data}
+            "result": status_code,
+            "status_code": status_code,
+            "data": {status_code: data}
         }
 
     @staticmethod
     def serivice_unavailable(data:dict={}) -> dict:
         '''status_code: 503'''
         result = "service_unavailable"
+        status_code = 503
         return {
             "message": "requested service is unavailable, try again later",
-            "result": result,
-            "status_code": 503,
-            "data": {result: data}
+            "result": status_code,
+            "status_code": status_code,
+            "data": {status_code: data}
         }
