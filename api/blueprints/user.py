@@ -21,10 +21,7 @@ user_bp = Blueprint("user_pb", __name__)
 @user_required()
 def get_user_info(user):
     """return user info"""
-    return JSONResponse(
-        message="user profile",
-        data=user.serialize_all()
-    ).to_json()
+    return JSONResponse(message="user profile", data=user.serialize_all()).to_json()
 
 
 @user_bp.route("/", methods=["PUT"])
@@ -32,20 +29,17 @@ def get_user_info(user):
 @user_required()
 def update_user_info(user, body):
     """update user info"""
-    newRows, invalids = update_row_content(User, body)
+    new_rows, invalids = update_row_content(User, body)
     if invalids:
         raise APIException.from_response(JSONResponse.bad_request(invalids))
 
     try:
-        h.update_database_model(user, newRows)
+        h.update_database_object(user, new_rows)
         db.session.commit()
     except SQLAlchemyError as e:
         handle_db_error(e)
 
-    return JSONResponse(
-        message="user has been updated",
-        data=user.serialize_all()
-    ).to_json()
+    return JSONResponse(message="user has been updated", data=user.serialize_all()).to_json()
 
 
 @user_bp.route("/companies", methods=["GET"])
@@ -63,13 +57,9 @@ def get_user_companies(user):
         base_q = base_q.filter(Role._inv_status == role_status)
 
     all_roles = base_q.paginate(page, limit)
-
     return JSONResponse(
         data={
-            "companies": list(map(lambda x: {
-                **x.company.serialize(),
-                "role": x.serialize()
-            }, all_roles.items)),
+            "companies": list(map(lambda x: {**x.company.serialize(), "role": x.serialize()}, all_roles.items)),
             **qp.get_pagination_form(all_roles),
             **qp.get_warings()
         }
@@ -81,7 +71,7 @@ def get_user_companies(user):
 @user_required()
 def create_company(user, body):
 
-    newRows, invalids = update_row_content(Company, body)
+    new_rows, invalids = update_row_content(Company, body)
     if invalids:
         raise APIException.from_response(JSONResponse.bad_request(invalids))
     
@@ -94,20 +84,18 @@ def create_company(user, body):
     #     )
 
     #check if name is available among all names in the app
-    company_name = h.StringHelpers(newRows.get("name"))
+    company_name = h.StringHelpers(new_rows.get("name"))
     name_exists = db.session.query(Company.id).\
         filter(Unaccent(func.lower(Company.name)) == company_name.as_unaccent_word.lower()).first()
     if name_exists:
-        raise APIException.from_response(JSONResponse.conflict(
-            {"name": company_name.value}
-        ))
+        raise APIException.from_response(JSONResponse.conflict({"name": company_name.value}))
 
     role_function = db.session.query(RoleFunction).filter(RoleFunction.code == "owner").first()
     if not role_function:
         role_function = RoleFunction.add_defaults("owner")
 
     try:
-        new_company = Company(**newRows)
+        new_company = Company(**new_rows)
         new_role = Role(
             company = new_company,
             user = user,
@@ -134,22 +122,16 @@ def update_role_status(user, body, company_id):
     inv_result = body["accept_invitation"]
     valid, msg = h.is_valid_id(company_id)
     if not valid:
-        raise APIException.from_response(JSONResponse.bad_request(
-            {"company_id": msg}
-        ))
+        raise APIException.from_response(JSONResponse.bad_request({"company_id": msg}))
 
-    target_role = db.session.query(Role).select_from(User).join(User.roles).\
+    target_role:Role = db.session.query(Role).select_from(User).join(User.roles).\
         join(Role.company).filter(User.id == user.id, Company.id == company_id).first()
 
     if not target_role:
-        raise APIException.from_response(JSONResponse.not_found(
-            {"company_id": company_id}
-        ))
+        raise APIException.from_response(JSONResponse.not_found({"company_id": company_id}))
 
     if not target_role.inv_status == "pending":
-        raise APIException.from_response(JSONResponse.conflict(
-            {"invitation": "already resolved"}
-        ))
+        raise APIException.from_response(JSONResponse.conflict({"invitation": "already resolved"}))
 
     if inv_result:
         target_role.inv_status = "accepted"
@@ -157,10 +139,7 @@ def update_role_status(user, body, company_id):
         target_role.inv_status = "rejected"
 
     db.session.commit()
-
-    return JSONResponse(
-        message="invitation resolved"
-    ).to_json()
+    return JSONResponse(message="invitation resolved").to_json()
 
 
 @user_bp.route("/companies/<int:company_id>/activate", methods=["GET"])
@@ -170,15 +149,11 @@ def get_company_access(user, company_id):
 
     valid, msg = h.is_valid_id(company_id)
     if not valid:
-        raise APIException.from_response(JSONResponse.bad_request(
-            {"company_id": msg}
-        ))
+        raise APIException.from_response(JSONResponse.bad_request({"company_id": msg}))
     
-    target_role = user.roles.filter(Role.company_id == company_id).first()
+    target_role:Role = user.roles.filter(Role.company_id == company_id).first()
     if not target_role:
-        raise APIException.from_response(JSONResponse.not_found(
-            {"company_id": company_id}
-        ))
+        raise APIException.from_response(JSONResponse.not_found({"company_id": company_id}))
 
     if not target_role.is_enabled:
         raise APIException.from_response(JSONResponse.user_not_active())

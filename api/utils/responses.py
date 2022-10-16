@@ -28,7 +28,7 @@ class JSONResponse:
     def serialize(self) -> dict:
         rv = {
             "message": self.message,
-            "result": self.result,
+            "result": self.status_code,
             "payload": self.data
         }
         return rv
@@ -79,12 +79,12 @@ class JSONResponse:
     @staticmethod
     def not_found(data:dict={}) -> dict:
         '''status_code: 404'''
-        result = "not_found"
+        status_code = 404
         return {
             "message": "required resource was not found in the database",
-            "result": result,
-            "status_code": 404,
-            "data": {result: data}
+            "result": status_code,
+            "status_code": status_code,
+            "data": {status_code: data}
         }
 
     @staticmethod

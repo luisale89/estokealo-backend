@@ -20,9 +20,7 @@ company_bp = Blueprint("company_bp", __name__)
 @role_required()
 def get_company(role):
 
-    return JSONResponse(
-        data= role.company.serialize_all()
-    ).to_json()
+    return JSONResponse(data= role.company.serialize_all()).to_json()
 
 
 @company_bp.route("/", methods=["PUT"])
@@ -41,12 +39,10 @@ def update_company(role, body):
                 filter(Company.id != role.company.id).first()
 
         if name_exists:
-            raise APIException.from_response(JSONResponse.conflict(
-                {"name": company_name.value}
-            ))
+            raise APIException.from_response(JSONResponse.conflict({"name": company_name.value}))
 
     try:
-        h.update_database_model(role.company, new_rows)
+        h.update_database_object(role.company, new_rows)
         db.session.commit()
     except SQLAlchemyError as e:
         handle_db_error(e)
@@ -189,7 +185,7 @@ def update_user_role(role, body:dict, user_id:int):
     if new_function_id:
         invalid_id, msg_id = h.is_valid_id(new_function_id)
         if invalid_id:
-            raise APIException.from_response(JSONResponse.bad_request({"new_function_id": new_function_id}))
+            raise APIException.from_response(JSONResponse.bad_request({"new_function_id": msg_id}))
 
         target_function = db.session.query(RoleFunction).get(new_function_id)
         if not target_function:
@@ -201,7 +197,7 @@ def update_user_role(role, body:dict, user_id:int):
         new_rows.update({"role_function_id": new_function_id})
 
     try:
-        h.update_database_model(target_role, new_rows=new_rows)
+        h.update_database_object(target_role, new_rows=new_rows)
         db.session.commit()
 
     except SQLAlchemyError as e:

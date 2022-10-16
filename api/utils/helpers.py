@@ -388,7 +388,7 @@ def create_role_access_token(jwt_id:str, role_id:int, user_id:int) -> str:
     )
 
 
-def update_database_model(model:object, new_rows:dict) -> None:
+def update_database_object(model:object, new_rows:dict) -> None:
     """
     update database table
 

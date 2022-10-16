@@ -33,13 +33,10 @@ def get_email_public_info():
         raise APIException.from_response(JSONResponse.bad_request({"email": msg}))
 
     user:User = User.filer_user(email=email.as_normalized_email)
-
     if not user or not user.signup_completed:
         raise APIException.from_response(JSONResponse.not_found({"email": email.value}))
 
-    return JSONResponse(data={
-        **user.serialize_public_info()
-    }).to_json()
+    return JSONResponse(data={**user.serialize_public_info()}).to_json()
 
 
 @auth_bp.route("/email-validation", methods=["GET"])
@@ -91,18 +88,16 @@ def validate_verification_code(claims, body):
 
     if body["verification_code"] != claims.get("verification_code"):
         raise APIException.from_response(JSONResponse.bad_request({"verification_code": "invalid code"}))
+
     email_in_claims = claims["sub"]
-    #jwt to blocklist
-    rds().add_jwt_to_blocklist(claims)
+    rds().add_jwt_to_blocklist(claims) #jwt to blocklist
     verified_token = create_access_token(
         identity=email_in_claims,
         additional_claims={
             "verified_token": True
         }
     )
-    payload = {
-        "verified_token": verified_token
-    }
+    payload = {"verified_token": verified_token}
 
     user:User = User.filer_user(email=email_in_claims)
     if user:
@@ -121,6 +116,7 @@ def signup_user(body, claims):
 
     email = claims.get("sub")
     password = h.StringHelpers(body["password"])
+    #test inputs
     invalids = h.validate_inputs({
         "password": password.is_valid_password()
     })
@@ -146,13 +142,12 @@ def signup_user(body, claims):
             raise APIException.from_response(JSONResponse.conflict({"email": email}))
 
         try:
-            h.update_database_model(user, new_rows)
+            h.update_database_object(user, new_rows)
             db.session.commit()
         except SQLAlchemyError as e:
             handle_db_error(e)
 
         access_token = h.create_user_access_token(jwt_id=user.email, user_id=user.id)
-
         return JSONResponse(
             message="user has completed signup process",
             data={
@@ -173,7 +168,6 @@ def signup_user(body, claims):
         handle_db_error(e)
 
     access_token = h.create_user_access_token(jwt_id=new_user.email, user_id=new_user.id)
-
     return JSONResponse(
         message="new user has been created",
         status_code=201,
@@ -224,6 +218,7 @@ def login_user(body):
 
     email = h.StringHelpers(body["email"])
     password = h.StringHelpers(body["password"])
+    #test inputs
     invalids = h.validate_inputs({
         "email": email.is_valid_email(),
         "password": password.is_valid_password()
@@ -255,13 +250,11 @@ def login_user(body):
                 {"company_id": msg}
             ))
 
-        target_role = db.session.query(Role).select_from(User).\
+        target_role:Role = db.session.query(Role).select_from(User).\
             join(User.roles).join(Role.company).filter(User.id == user.id, Company.id == company_id).first()
         
         if not target_role:
-            raise APIException.from_response(JSONResponse.not_found(
-                {"company_id": company_id}
-            ))
+            raise APIException.from_response(JSONResponse.not_found({"company_id": company_id}))
 
         if not target_role.is_enabled:
             raise APIException.from_response(JSONResponse.user_not_active())
@@ -288,3 +281,11 @@ def logout_user(user):
 
     rds().add_jwt_to_blocklist(get_jwt())
     return JSONResponse(f"user {user.email!r} has been logged out").to_json()
+
+
+@auth_bp.route("/test-user-validation", methods=["GET"])
+@json_required()
+@user_required()
+def test_user_validation(user:User):
+
+    return JSONResponse(f"token for user: {user.email!r} is valid").to_json()
