@@ -109,7 +109,7 @@ def validate_verification_code(claims, body):
     ).to_json()
 
 
-@auth_bp.route("/signup", methods=["POST", "PUT"])
+@auth_bp.route("/signup", methods=["POST"])
 @json_required({"password": str, "first_name": str, "last_name": str})
 @verified_token_required()
 def signup_user(body, claims):
@@ -134,12 +134,9 @@ def signup_user(body, claims):
     rds().add_jwt_to_blocklist(claims)
     user:User = User.filer_user(email=email)
     #complete user's registration process
-    if request.method == "PUT":
-        if not user:
-            raise APIException.from_response(JSONResponse.not_found({"email": email}))
-
+    if user:
         if user.signup_completed:
-            raise APIException.from_response(JSONResponse.conflict({"email": email}))
+            raise APIException.from_response(JSONResponse.conflict({"email": email})) #responds with a 409 status
 
         try:
             h.update_database_object(user, new_rows)
@@ -150,16 +147,14 @@ def signup_user(body, claims):
         access_token = h.create_user_access_token(jwt_id=user.email, user_id=user.id)
         return JSONResponse(
             message="user has completed signup process",
+            status_code=201,
             data={
                 **user.serialize_all(),
-                "accessToken": access_token
+                "access_token": access_token
             }
         ).to_json()
 
-    #if request.method == "POST"
-    if user: #if user already exists in the database
-        raise APIException.from_response(JSONResponse.conflict({"email": email}))
-
+    #if user is None, new user
     new_user = User(**new_rows)
     try:
         db.session.add(new_user)
@@ -173,7 +168,7 @@ def signup_user(body, claims):
         status_code=201,
         data={
             **new_user.serialize_all(),
-            "accessToken": access_token
+            "access_token": access_token
         }
     ).to_json()
 
@@ -204,7 +199,7 @@ def reset_user_password(body, claims):
         raise APIException.from_response(JSONResponse.not_found({"email": email}))
 
     try:
-        user.password = new_password
+        user.password = new_password.value
         db.session.commit()
     except SQLAlchemyError as e:
         handle_db_error(e)
@@ -238,7 +233,7 @@ def login_user(body):
 
     payload = {
         "user": user.serialize(),
-        "accessToken": h.create_user_access_token(jwt_id=email.as_normalized_email, user_id=user.id)
+        "access_token": h.create_user_access_token(jwt_id=email.as_normalized_email, user_id=user.id)
     }
 
     #if login want to be done including a specific role
@@ -260,7 +255,7 @@ def login_user(body):
             raise APIException.from_response(JSONResponse.user_not_active())
 
         payload.update({
-            "accessToken": h.create_role_access_token(
+            "access_token": h.create_role_access_token(
                 jwt_id=user.email, 
                 role_id=target_role.id,
                 user_id=user.id
