@@ -75,7 +75,6 @@ def get_email_validationCode():
     return JSONResponse(
         message="verification code sent to user",
         data={
-            "email": email.as_normalized_email,
             "verification_token": verification_token
         }
     ).to_json()
@@ -97,15 +96,10 @@ def validate_verification_code(claims, body):
             "verified_token": True
         }
     )
-    payload = {"verified_token": verified_token}
-
-    user:User = User.filer_user(email=email_in_claims)
-    if user:
-        payload.update({"user": user.serialize()})
 
     return JSONResponse(
         "verification process successfully completed",
-        data=payload
+        data={"verified_token": verified_token}
     ).to_json()
 
 
@@ -154,7 +148,7 @@ def signup_user(body, claims):
             }
         ).to_json()
 
-    #if user is None, new user
+    #if user is None, create new user
     new_user = User(**new_rows)
     try:
         db.session.add(new_user)
@@ -254,6 +248,7 @@ def login_user(body):
         if not target_role.is_enabled:
             raise APIException.from_response(JSONResponse.user_not_active())
 
+        payload.pop("user")
         payload.update({
             "access_token": h.create_role_access_token(
                 jwt_id=user.email, 

@@ -16,7 +16,7 @@ class RoleFunction(db.Model):
 
     def _base_serializer(self) -> dict:
         return {
-            "ID": self.id,
+            "id": self.id,
             "name": self.name,
             "code": self.code,
             "description": self.description,

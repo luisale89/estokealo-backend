@@ -28,7 +28,7 @@ class User(db.Model):
 
     def _base_serializer(self) -> dict:
         return {
-            "ID": self.id,
+            "id": self.id,
             "firstName": self.first_name,
             "lastName": self.last_name,
             "email": self._email,
@@ -39,13 +39,14 @@ class User(db.Model):
         return self._base_serializer()
 
     def serialize_all(self) -> dict:
-        return {
-            **self._base_serializer(),
+        base_dict = self._base_serializer()
+        base_dict.update({
             "signupDate": h.datetime_formatter(self._signup_date),
             "phone": self.phone,
             "profileImage": self._profile_image,
             "address": self.address.get("address", {})
-            }
+        })
+        return {self.__tablename__: base_dict}
 
     def serialize_public_info(self) -> dict:
         return {
@@ -113,7 +114,7 @@ class Role(db.Model):
 
     def _base_serializer(self) -> dict:
         return {
-            "ID": self.id,
+            "id": self.id,
             "relationDate": h.datetime_formatter(self._relation_date),
             "isActive": self._is_active,
             "invitationStatus": self._inv_status
@@ -126,12 +127,14 @@ class Role(db.Model):
         }
 
     def serialize_all(self) -> dict:
-        return {
-            **self._base_serializer(),
+        base_dict = self._base_serializer()
+        base_dict.update({
             "company": self.company.serialize(),
             "roleFunction": self.role_function.serialize(),
             "user": self.user.serialize()
-        }
+        })
+        return {self.__tablename__: base_dict}
+
 
     @property
     def is_active(self) -> bool:
@@ -175,7 +178,7 @@ class Company(db.Model):
 
     def _base_serializer(self) -> dict:
         return {
-            "ID": self.id,
+            "id": self.id,
             "name": self.name,
             "logo": self._logo
         }
@@ -184,8 +187,8 @@ class Company(db.Model):
         return self._base_serializer()
 
     def serialize_all(self):
-        return {
-            **self._base_serializer(),
+        base_dict = self._base_serializer()
+        base_dict.update({
             "timezoneName": self.timezone_name,
             "address": self.address.get("address", {}),
             "currency": {
@@ -193,7 +196,8 @@ class Company(db.Model):
                 "rate": self.currency_rate
             },
             "creationDate": h.datetime_formatter(self._created_at)
-        }
+        })
+        return {self.__tablename__: base_dict}
 
     def dolarize(self, value:float) -> float:
         """ Convert 'price' parameter to the equivalent of the base currency"""
