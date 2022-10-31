@@ -5,7 +5,7 @@ from .responses import JSONResponse
 
 class APIException(Exception, JSONResponse):
 
-    def __init__(self, message, result="error", status_code=400, data=None) -> None:  # default code 400
+    def __init__(self, message:str, result:str="error", status_code:int=400, data:dict={}) -> None:  # default code 400
         Exception.__init__(self)
         JSONResponse.__init__(self, message, result, status_code, data)
 
@@ -15,5 +15,5 @@ class APIException(Exception, JSONResponse):
             message=response.get("message", "something went wrong..."),
             result=response.get("result", "internal_server_error"),
             status_code=response.get("status_code", 500),
-            data=response.get("data", None)
+            data=response.get("data", {})
         )

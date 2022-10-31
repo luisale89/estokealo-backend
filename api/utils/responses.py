@@ -12,11 +12,11 @@ class JSONResponse:
     - to_json() -> http JSON response
     """
 
-    def __init__(self, message="ok", result="success", status_code=200, data=None) -> None:
+    def __init__(self, message:str="ok", result:str="success", status_code:int=200, data:dict={}) -> None:
         self.message = message
         self.result = result
         self.status_code = status_code
-        self.data = dict(data or ())
+        self.data = data
 
     def __repr__(self) -> str:
         return f"JSONResponse(" \

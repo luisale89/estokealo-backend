@@ -104,18 +104,23 @@ def validate_verification_code(claims, body):
 
 
 @auth_bp.route("/signup", methods=["POST"])
-@json_required({"password": str, "first_name": str, "last_name": str})
+@json_required({"password": str, "re_password": str, "first_name": str, "last_name": str})
 @verified_token_required()
 def signup_user(body, claims):
 
     email = claims.get("sub")
     password = h.StringHelpers(body["password"])
+    re_password = body["re_password"]
     #test inputs
     invalids = h.validate_inputs({
         "password": password.is_valid_password()
     })
     new_rows, invalid_body = update_row_content(User, body)
     invalids.update(invalid_body)
+
+    if not password.value == re_password:
+        invalids.update({"re_password": "no match between passwords"})
+
     if invalids:
         raise APIException.from_response(JSONResponse.bad_request(invalids))
 
@@ -142,10 +147,7 @@ def signup_user(body, claims):
         return JSONResponse(
             message="user has completed signup process",
             status_code=201,
-            data={
-                **user.serialize_all(),
-                "access_token": access_token
-            }
+            data={"access_token": access_token}
         ).to_json()
 
     #if user is None, create new user
@@ -160,10 +162,7 @@ def signup_user(body, claims):
     return JSONResponse(
         message="new user has been created",
         status_code=201,
-        data={
-            **new_user.serialize_all(),
-            "access_token": access_token
-        }
+        data={"access_token": access_token}
     ).to_json()
 
 
@@ -226,7 +225,6 @@ def login_user(body):
         raise APIException.from_response(JSONResponse.wrong_password())
 
     payload = {
-        "user": user.serialize(),
         "access_token": h.create_user_access_token(jwt_id=email.as_normalized_email, user_id=user.id)
     }
 
@@ -248,18 +246,16 @@ def login_user(body):
         if not target_role.is_enabled:
             raise APIException.from_response(JSONResponse.user_not_active())
 
-        payload.pop("user")
         payload.update({
             "access_token": h.create_role_access_token(
                 jwt_id=user.email, 
                 role_id=target_role.id,
                 user_id=user.id
-            ),
-            **target_role.serialize_all()
+            )
         })
 
     return JSONResponse(
-        message="user logged in",
+        message=f"user {user.email!r} logged in",
         data=payload
     ).to_json()
 
@@ -270,7 +266,7 @@ def login_user(body):
 def logout_user(user):
 
     rds().add_jwt_to_blocklist(get_jwt())
-    return JSONResponse(f"user {user.email!r} has been logged out").to_json()
+    return JSONResponse(f"user {user.email!r} has been disconected").to_json()
 
 
 @auth_bp.route("/test-user-validation", methods=["GET"])
