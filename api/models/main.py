@@ -46,17 +46,18 @@ class User(db.Model):
             "profileImage": self._profile_image,
             "address": self.address.get("address", {})
         })
-        return {self.__tablename__: base_dict}
+        return base_dict
 
     def serialize_public_info(self) -> dict:
-        return {
-            self.__tablename__: self._base_serializer(),
+        base_dict = self._base_serializer()
+        base_dict.update({
             "companies": list(map(lambda x: x.company.serialize(),
                 filter(lambda x: x.is_enabled, self.roles.all()))),
-            }
+        })
+        return base_dict
 
     @classmethod
-    def filer_user(cls, email:str = "", user_id:int = 0) -> Union[object, None]:
+    def filter_user(cls, email:str = "", user_id:int = 0) -> Union[object, None]:
         """
         Filter a user instance by its email address or id
         """
@@ -117,23 +118,26 @@ class Role(db.Model):
             "id": self.id,
             "relationDate": h.datetime_formatter(self._relation_date),
             "isActive": self._is_active,
-            "invitationStatus": self._inv_status
-        }
-
-    def serialize(self) -> dict:
-        return {
-            **self._base_serializer(),
+            "invitationStatus": self._inv_status,
             "roleFunction": self.role_function.serialize()
         }
 
-    def serialize_all(self) -> dict:
+    def serialize(self) -> dict:
+        return self._base_serializer()
+    
+    def serialize_with_user(self) -> dict:
         base_dict = self._base_serializer()
         base_dict.update({
-            "company": self.company.serialize(),
-            "roleFunction": self.role_function.serialize(),
+            "company": self.company.serialize()
+        })
+        return base_dict
+
+    def serialize_with_company(self) -> dict:
+        base_dict = self._base_serializer()
+        base_dict.update({
             "user": self.user.serialize()
         })
-        return {self.__tablename__: base_dict}
+        return base_dict
 
 
     @property
@@ -197,7 +201,7 @@ class Company(db.Model):
             },
             "creationDate": h.datetime_formatter(self._created_at)
         })
-        return {self.__tablename__: base_dict}
+        return base_dict
 
     def dolarize(self, value:float) -> float:
         """ Convert 'price' parameter to the equivalent of the base currency"""

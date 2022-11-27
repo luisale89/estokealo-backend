@@ -36,7 +36,7 @@ class RoleFunction(db.Model):
         owner = cls._get_rolefunc_by_code("owner")
         if not owner:
             newOwnerFunction = cls(
-                name= "propietario",
+                name= "Propietario",
                 code= "owner",
                 description= "usuario puede administrar todos los aspectos de la aplicación",
                 access_level= 0
@@ -48,7 +48,7 @@ class RoleFunction(db.Model):
         admin = cls._get_rolefunc_by_code("admin")
         if not admin:
             newAdminFunction = cls(
-                name = "administrador",
+                name = "Administrador",
                 code = "admin",
                 description= "puede administrar algunos aspectos de la aplicación, con algunas limitaciones",
                 access_level=1
@@ -60,7 +60,7 @@ class RoleFunction(db.Model):
         operator = cls._get_rolefunc_by_code("operator")
         if not operator:
             newOperatorFunction = cls(
-                name= "operador",
+                name= "Operador",
                 code= "operator",
                 description= "Este usuario solo puede realizar acciones asignadas y modificar algunos aspectos de la aplicación",
                 access_level=2
@@ -72,7 +72,7 @@ class RoleFunction(db.Model):
         viewer = cls._get_rolefunc_by_code("viewer")
         if not viewer:
             newViewerFunction = cls(
-                name= "observador",
+                name= "Observador",
                 code= "viewer",
                 description="Este usuario es de solo lectura, y puede visualizar los aspectos públicos de la aplicación",
                 access_level= 99

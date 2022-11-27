@@ -7,12 +7,12 @@ from api.utils.exceptions import APIException
 from api.utils.db_operations import handle_db_error, update_row_content
 from api.utils.decorators import json_required, user_required, verification_token_required, verified_token_required
 from api.services.email_service import Email_api_service as ems
-from api.services.redis_service import RedisClient as rds
+from api.services.redis_service import RedisClient as RDS
 from api.extensions import db
 from api.models.main import Company, Role, User
 from sqlalchemy.exc import SQLAlchemyError
 from werkzeug.security import check_password_hash
-from flask_jwt_extended import create_access_token, get_jwt
+from flask_jwt_extended import create_access_token, get_jwt, jwt_required
 
 
 auth_bp = Blueprint("auth_bp", __name__)
@@ -23,20 +23,20 @@ auth_bp = Blueprint("auth_bp", __name__)
 def get_email_public_info():
     """Public Endpoint"""
     qp = h.QueryParams(request.args)
-    email = h.StringHelpers(qp.get_first_value("email"))
+    Email = h.StringHelpers(qp.get_first_value("email"))
 
-    if not email:
+    if not Email: #if email is not in query parameters
         raise APIException.from_response(JSONResponse.bad_request(qp.get_warings()))
 
-    valid, msg = email.is_valid_email()
+    valid, msg = Email.is_valid_email()
     if not valid:
         raise APIException.from_response(JSONResponse.bad_request({"email": msg}))
 
-    user:User = User.filer_user(email=email.as_normalized_email)
+    user:User = User.filter_user(email=Email.as_normalized_email)
     if not user or not user.signup_completed:
-        raise APIException.from_response(JSONResponse.not_found({"email": email.value}))
+        raise APIException.from_response(JSONResponse.not_found({"email": Email.value}))
 
-    return JSONResponse(data={**user.serialize_public_info()}).to_json()
+    return JSONResponse(data={"public_info": user.serialize_public_info()}).to_json()
 
 
 @auth_bp.route("/email-validation", methods=["GET"])
@@ -48,35 +48,32 @@ def get_email_validationCode():
     required in query params:
         ?email="valid-email:str"
     """
-    qp = h.QueryParams(request.args)
-    email = h.StringHelpers(qp.get_first_value("email"))
+    QP = h.QueryParams(request.args)
+    Email = h.StringHelpers(QP.get_first_value("email"))
 
-    if not email:
-        raise APIException.from_response(JSONResponse.bad_request(qp.get_warings()))
+    if not Email:
+        raise APIException.from_response(JSONResponse.bad_request(QP.get_warings()))
 
-    valid, msg = email.is_valid_email()
+    valid, msg = Email.is_valid_email()
     if not valid:
         raise APIException.from_response(JSONResponse.bad_request({"email": msg}))
 
     random_code = randint(100000, 999999)
-    success, msg = ems.user_verification(email_to=email.value, verification_code=random_code).send_email()
+    success, msg = ems.user_verification(email_to=Email.value, verification_code=random_code).send_email()
     if not success:
         raise APIException.from_response(JSONResponse.serivice_unavailable({"email_serivice": msg}))
 
     verification_token = create_access_token(
-        identity=email.as_normalized_email,
+        identity=Email.as_normalized_email,
         expires_delta=timedelta(hours=4), #verification token expiration datetime
         additional_claims={
             "verification_code": random_code,
             "verification_token": True
         }
     )
-
     return JSONResponse(
         message="verification code sent to user",
-        data={
-            "verification_token": verification_token
-        }
+        data= {"verification_token": verification_token}
     ).to_json()
 
 
@@ -89,7 +86,7 @@ def validate_verification_code(claims, body):
         raise APIException.from_response(JSONResponse.bad_request({"verification_code": "invalid code"}))
 
     email_in_claims = claims["sub"]
-    rds().add_jwt_to_blocklist(claims) #jwt to blocklist
+    RDS().add_jwt_to_blocklist(claims) #jwt to blocklist
     verified_token = create_access_token(
         identity=email_in_claims,
         additional_claims={
@@ -130,8 +127,9 @@ def signup_user(body, claims):
         "signup_completed": True
     })
     #jwt to blocklist
-    rds().add_jwt_to_blocklist(claims)
-    user:User = User.filer_user(email=email)
+    RDS().add_jwt_to_blocklist(claims)
+    user:User = User.filter_user(email=email)
+    response = {"access_token": ""}
     #complete user's registration process
     if user:
         if user.signup_completed:
@@ -144,10 +142,14 @@ def signup_user(body, claims):
             handle_db_error(e)
 
         access_token = h.create_user_access_token(jwt_id=user.email, user_id=user.id)
+        response.update({
+            "access_token": access_token,
+            "user": user.serialize_all()
+        })
         return JSONResponse(
             message="user has completed signup process",
             status_code=201,
-            data={"access_token": access_token}
+            data=response
         ).to_json()
 
     #if user is None, create new user
@@ -159,10 +161,15 @@ def signup_user(body, claims):
         handle_db_error(e)
 
     access_token = h.create_user_access_token(jwt_id=new_user.email, user_id=new_user.id)
+    response.update({
+        "access_token": access_token,
+        "user": new_user.serialize_all()
+    })
+    
     return JSONResponse(
         message="new user has been created",
         status_code=201,
-        data={"access_token": access_token}
+        data=response
     ).to_json()
 
 
@@ -185,9 +192,9 @@ def reset_user_password(body, claims):
         raise APIException.from_response(JSONResponse.bad_request({"new_password": msg}))
 
     #jwt to blocklist
-    rds().add_jwt_to_blocklist(claims)
+    RDS().add_jwt_to_blocklist(claims)
     
-    user:User = User.filer_user(email=email)
+    user:User = User.filter_user(email=email)
     if not user:
         raise APIException.from_response(JSONResponse.not_found({"email": email}))
 
@@ -204,31 +211,32 @@ def reset_user_password(body, claims):
 @json_required({"email": str, "password": str})
 def login_user(body):
 
-    email = h.StringHelpers(body["email"])
-    password = h.StringHelpers(body["password"])
+    Email = h.StringHelpers(body["email"])
+    Password = h.StringHelpers(body["password"])
     #test inputs
     invalids = h.validate_inputs({
-        "email": email.is_valid_email(),
-        "password": password.is_valid_password()
+        "email": Email.is_valid_email(),
+        "password": Password.is_valid_password()
     })
     if invalids:
         raise APIException.from_response(JSONResponse.bad_request(invalids))
 
-    user:User = User.filer_user(email=email.as_normalized_email)
+    user:User = User.filter_user(email=Email.as_normalized_email)
     if not user:
-        raise APIException.from_response(JSONResponse.not_found({"email": email}))
+        raise APIException.from_response(JSONResponse.not_found({"email": Email.as_normalized_email}))
 
     if not user.is_enabled:
         raise APIException.from_response(JSONResponse.user_not_active())
 
-    if not check_password_hash(user.password, password.value):
+    if not check_password_hash(user.password, Password.value):
         raise APIException.from_response(JSONResponse.wrong_password())
 
-    payload = {
-        "access_token": h.create_user_access_token(jwt_id=email.as_normalized_email, user_id=user.id)
+    response = {
+        "access_token": h.create_user_access_token(jwt_id=Email.as_normalized_email, user_id=user.id),
+        "user": user.serialize_all()
     }
 
-    #if login want to be done including a specific role
+    #if login needs to be done including a specific role
     company_id = body.get("company_id", None)
     if company_id: #login with company
         valid, msg = h.is_valid_id(company_id)
@@ -246,17 +254,18 @@ def login_user(body):
         if not target_role.is_enabled:
             raise APIException.from_response(JSONResponse.user_not_active())
 
-        payload.update({
+        response.update({
             "access_token": h.create_role_access_token(
                 jwt_id=user.email, 
                 role_id=target_role.id,
                 user_id=user.id
-            )
+            ),
+            "role": target_role.serialize_with_user()
         })
 
     return JSONResponse(
         message=f"user {user.email!r} logged in",
-        data=payload
+        data=response
     ).to_json()
 
 
@@ -265,13 +274,24 @@ def login_user(body):
 @user_required()
 def logout_user(user):
 
-    rds().add_jwt_to_blocklist(get_jwt())
+    RDS().add_jwt_to_blocklist(get_jwt())
     return JSONResponse(f"user {user.email!r} has been disconected").to_json()
 
 
-@auth_bp.route("/test-user-validation", methods=["GET"])
+@auth_bp.route("/test-jwt", methods=["GET"])
 @json_required()
 @user_required()
 def test_user_validation(user:User):
+    
+    response = {
+        "user": user.serialize_all(),
+    }
+    claims = get_jwt()
 
-    return JSONResponse(f"token for user: {user.email!r} is valid").to_json()
+    if claims.get("role_id", False):
+        target_role:Role = db.session.query(Role).filter(Role.id == claims["role_id"]).first()
+        response.update({
+            "role": target_role.serialize_with_user()
+        })
+
+    return JSONResponse(f"token for user: {user.email!r} is valid", data=response).to_json()
