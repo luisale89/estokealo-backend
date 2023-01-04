@@ -4,7 +4,7 @@ from api.utils.responses import JSONResponse
 from api.utils.exceptions import APIException
 from api.utils.db_operations import handle_db_error, update_row_content, Unaccent
 from api.utils.decorators import json_required, user_required
-from api.services.redis_service import RedisClient as rds
+from api.services.redis_service import RedisClient as RDS
 from api.extensions import db
 from api.models.main import Company, Role, User
 from api.models.global_models import RoleFunction
@@ -19,9 +19,10 @@ user_bp = Blueprint("user_pb", __name__)
 @user_bp.route("/", methods=["GET"])
 @json_required()
 @user_required()
-def get_user_info(user):
+def get_user_info(user:User):
     """return user info"""
-    return JSONResponse(message="user profile", data=user.serialize_all()).to_json()
+    response = {"user": user.serialize_all()}
+    return JSONResponse(message="user profile", data=response).to_json()
 
 
 @user_bp.route("/", methods=["PUT"])
@@ -42,11 +43,11 @@ def update_user_info(user, body):
     return JSONResponse(message="user has been updated", data=user.serialize_all()).to_json()
 
 
-@user_bp.route("/companies", methods=["GET"])
+@user_bp.route("/roles", methods=["GET"])
 @json_required()
 @user_required()
-def get_user_companies(user):
-    """get all user companies, from invitations or the ones that have been created"""
+def get_user_roles(user):
+    """get all user roles, from invitations or the ones that have been created"""
     qp = h.QueryParams(request.args)
     page, limit = qp.get_pagination_params()
     role_status = qp.get_first_value("status") #status: pending, accepted, rejected
@@ -57,16 +58,17 @@ def get_user_companies(user):
         base_q = base_q.filter(Role._inv_status == role_status)
 
     all_roles = base_q.paginate(page, limit)
-    return JSONResponse(
-        data={
-            "companies": list(map(lambda x: {**x.company.serialize(), "role": x.serialize()}, all_roles.items)),
-            **qp.get_pagination_form(all_roles),
-            **qp.get_warings()
-        }
-    ).to_json()
+
+    response = {
+        "roles": list(map(lambda x: {**x.serialize_with_user()}, all_roles.items)),
+        **qp.get_pagination_form(all_roles),
+        **qp.get_warings()
+    }
+
+    return JSONResponse(data=response).to_json()
 
 
-@user_bp.route("/companies", methods=["POST"])
+@user_bp.route("/roles", methods=["POST"])
 @json_required({"name": str})
 @user_required()
 def create_company(user, body):
@@ -87,6 +89,7 @@ def create_company(user, body):
     company_name = h.StringHelpers(new_rows.get("name"))
     name_exists = db.session.query(Company.id).\
         filter(Unaccent(func.lower(Company.name)) == company_name.as_unaccent_word.lower()).first()
+    
     if name_exists:
         raise APIException.from_response(JSONResponse.conflict({"name": company_name.value}))
 
@@ -114,7 +117,7 @@ def create_company(user, body):
     ).to_json()
 
 
-@user_bp.route("/companies/<int:company_id>/invitation", methods=["PUT"])
+@user_bp.route("/roles/<int:company_id>/invitation", methods=["PUT"])
 @json_required({"accept_invitation": bool})
 @user_required()
 def update_role_status(user, body, company_id):
@@ -142,7 +145,7 @@ def update_role_status(user, body, company_id):
     return JSONResponse(message="invitation resolved").to_json()
 
 
-@user_bp.route("/companies/<int:company_id>/activate", methods=["GET"])
+@user_bp.route("/roles/<int:company_id>/activate", methods=["GET"])
 @json_required()
 @user_required()
 def get_company_access(user, company_id):
@@ -158,17 +161,19 @@ def get_company_access(user, company_id):
     if not target_role.is_enabled:
         raise APIException.from_response(JSONResponse.user_not_active())
 
-    rds().add_jwt_to_blocklist(get_jwt())
+    RDS().add_jwt_to_blocklist(get_jwt())
     access_token = h.create_role_access_token(
         jwt_id=user.email, 
         role_id=target_role.id, 
         user_id=user.id
     )
 
+    response = {
+        "access_token": access_token,
+        "role": target_role.serialize_with_user()
+    }
+
     return JSONResponse(
         message="company access granted",
-        data={
-            "access_token": access_token,
-            **target_role.serialize_all()
-        }
+        data=response
     ).to_json()

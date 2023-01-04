@@ -28,6 +28,10 @@ def create_app(test_config=None):
     jwt.init_app(app)
     cors.init_app(app)
 
+    # with app.app_context():
+    #     db.create_all() #creates all tables in the database, if does not exists.
+    #   flask-migrate is currently creating the tables in the database.
+
     #API_BLUEPRINTS
     app.register_blueprint(auth.auth_bp, url_prefix="/auth")
     app.register_blueprint(user.user_bp, url_prefix="/user")

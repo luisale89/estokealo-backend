@@ -1,4 +1,5 @@
 from api.extensions import db
+from api.utils.enums import RoleTypes
 
 
 class RoleFunction(db.Model):
@@ -31,13 +32,14 @@ class RoleFunction(db.Model):
         return db.session.query(RoleFunction.id).filter(RoleFunction.code == code).first()
 
     @classmethod
-    def add_defaults(cls, cls_to_return:str="owner"):
+    def add_defaults(cls, cls_to_return:str=RoleTypes.OWNER.value):
+        """stores all roles in the database, and returns cls_to_return class, to be used"""
         commit = {}
-        owner = cls._get_rolefunc_by_code("owner")
+        owner = cls._get_rolefunc_by_code(RoleTypes.OWNER.value)
         if not owner:
             newOwnerFunction = cls(
                 name= "Propietario",
-                code= "owner",
+                code= RoleTypes.OWNER.value,
                 description= "usuario puede administrar todos los aspectos de la aplicación",
                 access_level= 0
             )
@@ -45,11 +47,11 @@ class RoleFunction(db.Model):
             db.session.add(newOwnerFunction)
             commit.update({"owner": newOwnerFunction})
 
-        admin = cls._get_rolefunc_by_code("admin")
+        admin = cls._get_rolefunc_by_code(RoleTypes.ADMIN.value)
         if not admin:
             newAdminFunction = cls(
                 name = "Administrador",
-                code = "admin",
+                code = RoleTypes.ADMIN.value,
                 description= "puede administrar algunos aspectos de la aplicación, con algunas limitaciones",
                 access_level=1
             )
@@ -57,11 +59,11 @@ class RoleFunction(db.Model):
             db.session.add(newAdminFunction)
             commit.update({"admin": newAdminFunction})
 
-        operator = cls._get_rolefunc_by_code("operator")
+        operator = cls._get_rolefunc_by_code(RoleTypes.OPERATOR.value)
         if not operator:
             newOperatorFunction = cls(
                 name= "Operador",
-                code= "operator",
+                code= RoleTypes.OPERATOR.value,
                 description= "Este usuario solo puede realizar acciones asignadas y modificar algunos aspectos de la aplicación",
                 access_level=2
             )
@@ -69,11 +71,11 @@ class RoleFunction(db.Model):
             db.session.add(newOperatorFunction)
             commit.update({"operator": newOperatorFunction})
 
-        viewer = cls._get_rolefunc_by_code("viewer")
+        viewer = cls._get_rolefunc_by_code(RoleTypes.VIEWER.value)
         if not viewer:
             newViewerFunction = cls(
                 name= "Observador",
-                code= "viewer",
+                code= RoleTypes.VIEWER.value,
                 description="Este usuario es de solo lectura, y puede visualizar los aspectos públicos de la aplicación",
                 access_level= 99
             )

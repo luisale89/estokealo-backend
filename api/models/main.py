@@ -209,3 +209,18 @@ class Company(db.Model):
             return round(value / self.currency_rate, 2)
 
         return 0.0
+
+
+class Store(db.Model):
+    __tablename__ = "store"
+    id = db.Column(db.Integer, primary_key = True)
+    name = db.Column(db.String(256), nullable=False)
+
+    def __repr__(self) -> str:
+        return f"Store(id={self.id})"
+
+    def _base_serialize(self) -> dict:
+        return {
+            "record_id": self.id,
+            "name": self.name
+        }
