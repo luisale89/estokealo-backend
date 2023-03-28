@@ -4,7 +4,7 @@ from flask import Blueprint, request
 from api.utils import helpers as h
 from api.utils.responses import JSONResponse
 from api.utils.exceptions import APIException
-from api.utils.db_operations import handle_db_error, update_row_content
+from api.utils.db_operations import handle_db_error, create_table_content, update_database_object
 from api.utils.decorators import json_required, user_required, verification_token_required, verified_token_required
 from api.services.email_service import Email_api_service as ems
 from api.services.redis_service import RedisClient as RDS
@@ -23,18 +23,18 @@ auth_bp = Blueprint("auth_bp", __name__)
 def get_email_public_info():
     """Public Endpoint"""
     qp = h.QueryParams(request.args)
-    Email = h.StringHelpers(qp.get_first_value("email"))
+    email = qp.get_first_value("email")
 
-    if not Email: #if email is not in query parameters
+    if not email: #if email is not in query parameters
         raise APIException.from_response(JSONResponse.bad_request(qp.get_warings()))
 
-    valid, msg = Email.is_valid_email()
+    valid, msg = h.is_valid_email_format(email)
     if not valid:
         raise APIException.from_response(JSONResponse.bad_request({"email": msg}))
 
-    user:User = User.filter_user(email=Email.as_normalized_email)
+    user:User = User.filter_user(email=h.normalize_string(email))
     if not user or not user.signup_completed:
-        raise APIException.from_response(JSONResponse.not_found({"email": Email.value}))
+        raise APIException.from_response(JSONResponse.not_found({"email": email}))
 
     return JSONResponse(data={"public_info": user.serialize_public_info()}).to_json()
 
@@ -48,23 +48,25 @@ def get_email_validationCode():
     required in query params:
         ?email="valid-email:str"
     """
-    QP = h.QueryParams(request.args)
-    Email = h.StringHelpers(QP.get_first_value("email"))
+    qp = h.QueryParams(request.args)
+    email = qp.get_first_value("email")
 
-    if not Email:
-        raise APIException.from_response(JSONResponse.bad_request(QP.get_warings()))
+    if not email:
+        raise APIException.from_response(JSONResponse.bad_request(qp.get_warings()))
 
-    valid, msg = Email.is_valid_email()
+    valid, msg = h.is_valid_email_format(email)
     if not valid:
         raise APIException.from_response(JSONResponse.bad_request({"email": msg}))
+    
+    normalized_email = h.normalize_string(email)
 
     random_code = randint(100000, 999999)
-    success, msg = ems.user_verification(email_to=Email.value, verification_code=random_code).send_email()
+    success, msg = ems.user_verification(email_to=normalized_email, verification_code=random_code).send_email()
     if not success:
         raise APIException.from_response(JSONResponse.serivice_unavailable({"email_serivice": msg}))
 
     verification_token = create_access_token(
-        identity=Email.as_normalized_email,
+        identity= normalized_email,
         expires_delta=timedelta(hours=4), #verification token expiration datetime
         additional_claims={
             "verification_code": random_code,
@@ -78,8 +80,15 @@ def get_email_validationCode():
 
 
 @auth_bp.route("/email-validation", methods=["PUT"])
-@json_required({"verification_code": int})
 @verification_token_required()
+@json_required(schema={
+    "type": "object",
+    "properties": {
+        "verification_code": {"type": "integer", "minimum": 100000, "maximum": 999999}
+    },
+    "required": ["verification_code"],
+    "additionalProperties": False
+})
 def validate_verification_code(claims, body):
 
     if body["verification_code"] != claims.get("verification_code"):
@@ -101,29 +110,39 @@ def validate_verification_code(claims, body):
 
 
 @auth_bp.route("/signup", methods=["POST"])
-@json_required({"password": str, "re_password": str, "first_name": str, "last_name": str})
 @verified_token_required()
+@json_required(schema={
+    "type": "object",
+    "properties": {
+        "password":     {"type": "string"},
+        "re_password":  {"type": "string"},
+        "first_name":   {"type": "string"},
+        "last_name":    {"type": "string"}
+    },
+    "required": ["password", "re_password", "first_name", "last_name"],
+    "additionalProperties": False
+})
 def signup_user(body, claims):
 
     email = claims.get("sub")
-    password = h.StringHelpers(body["password"])
+    password = body["password"]
     re_password = body["re_password"]
     #test inputs
     invalids = h.validate_inputs({
-        "password": password.is_valid_password()
+        "password": h.is_valid_password_format(password)
     })
-    new_rows, invalid_body = update_row_content(User, body)
-    invalids.update(invalid_body)
+    new_records, invalid_records = create_table_content(User, body)
+    invalids.update(invalid_records)
 
-    if not password.value == re_password:
+    if not password == re_password:
         invalids.update({"re_password": "no match between passwords"})
 
     if invalids:
-        raise APIException.from_response(JSONResponse.bad_request(invalids))
+        raise APIException.from_response(JSONResponse.bad_request(data=invalids))
 
-    new_rows.update({
+    new_records.update({
         "email": email,
-        "password": password.value,
+        "password": password,
         "signup_completed": True
     })
     #jwt to blocklist
@@ -136,7 +155,7 @@ def signup_user(body, claims):
             raise APIException.from_response(JSONResponse.conflict({"email": email})) #responds with a 409 status
 
         try:
-            h.update_database_object(user, new_rows)
+            update_database_object(user, new_records)
             db.session.commit()
         except SQLAlchemyError as e:
             handle_db_error(e)
@@ -153,7 +172,7 @@ def signup_user(body, claims):
         ).to_json()
 
     #if user is None, create new user
-    new_user = User(**new_rows)
+    new_user = User(**new_records)
     try:
         db.session.add(new_user)
         db.session.commit()
@@ -174,22 +193,30 @@ def signup_user(body, claims):
 
 
 @auth_bp.route("/password-reset", methods=["PUT"])
-@json_required({"new_password": str, "re_new_password": str})
 @verified_token_required()
+@json_required(schema={
+    "type": "object",
+    "properties": {
+        "new_password": {"type": "string"},
+        "re_password": {"type": "string"}
+    },
+    "required": ["new_password", "re_password"],
+    "additionalProperties": False
+})
 def reset_user_password(body, claims):
 
     email = claims.get("sub")
-    new_password = h.StringHelpers(body["new_password"])
-    re_new_password = body["re_new_password"]
+    new_password = body["new_password"]
+    re_new_password = body["re_password"]
 
-    if not new_password.value == re_new_password:
+    valid, msg = h.is_valid_password_format(new_password)
+    if not valid:
+        raise APIException.from_response(JSONResponse.bad_request({"new_password": msg}))
+
+    if not new_password == re_new_password:
         raise APIException.from_response(
             JSONResponse.bad_request({"re_new_password": "no match between passwords"})
         )
-
-    valid, msg = new_password.is_valid_password()
-    if not valid:
-        raise APIException.from_response(JSONResponse.bad_request({"new_password": msg}))
 
     #jwt to blocklist
     RDS().add_jwt_to_blocklist(claims)
@@ -199,7 +226,7 @@ def reset_user_password(body, claims):
         raise APIException.from_response(JSONResponse.not_found({"email": email}))
 
     try:
-        user.password = new_password.value
+        user.password = new_password
         db.session.commit()
     except SQLAlchemyError as e:
         handle_db_error(e)
@@ -208,42 +235,48 @@ def reset_user_password(body, claims):
 
 
 @auth_bp.route("/login", methods=["POST"])
-@json_required({"email": str, "password": str})
+@json_required(schema={
+    "type": "object",
+    "properties": {
+        "email":    {"type": "string"},
+        "password": {"type": "string"},
+        "company_id": {"type": "integer", "minimum": 1}
+    },
+    "required": ["email", "password"],
+    "additionalProperties": False
+})
 def login_user(body):
 
-    Email = h.StringHelpers(body["email"])
-    Password = h.StringHelpers(body["password"])
+    email = body["email"]
+    password = body["password"]
     #test inputs
     invalids = h.validate_inputs({
-        "email": Email.is_valid_email(),
-        "password": Password.is_valid_password()
+        "email": h.is_valid_email_format(email),
+        "password": h.is_valid_password_format(password)
     })
     if invalids:
         raise APIException.from_response(JSONResponse.bad_request(invalids))
 
-    user:User = User.filter_user(email=Email.as_normalized_email)
+    normalized_email = h.normalize_string(email)
+
+    user:User = User.filter_user(email=normalized_email)
     if not user:
-        raise APIException.from_response(JSONResponse.not_found({"email": Email.as_normalized_email}))
+        raise APIException.from_response(JSONResponse.not_found({"email": normalized_email}))
 
     if not user.is_enabled:
         raise APIException.from_response(JSONResponse.user_not_active())
 
-    if not check_password_hash(user.password, Password.value):
+    if not check_password_hash(user.password, password):
         raise APIException.from_response(JSONResponse.wrong_password())
 
     response = {
-        "access_token": h.create_user_access_token(jwt_id=Email.as_normalized_email, user_id=user.id),
+        "access_token": h.create_user_access_token(jwt_id=normalized_email, user_id=user.id),
         "user": user.serialize_all()
     }
 
     #if login needs to be done including a specific role
     company_id = body.get("company_id", None)
     if company_id: #login with company
-        valid, msg = h.is_valid_id(company_id)
-        if not valid:
-            raise APIException.from_response(JSONResponse.bad_request(
-                {"company_id": msg}
-            ))
 
         target_role:Role = db.session.query(Role).select_from(User).\
             join(User.roles).join(Role.company).filter(User.id == user.id, Company.id == company_id).first()
@@ -270,8 +303,8 @@ def login_user(body):
 
 
 @auth_bp.route("/logout", methods=["DELETE"])
-@json_required()
 @user_required()
+@json_required()
 def logout_user(user):
 
     RDS().add_jwt_to_blocklist(get_jwt())
@@ -279,8 +312,8 @@ def logout_user(user):
 
 
 @auth_bp.route("/test-jwt", methods=["GET"])
-@json_required()
 @user_required()
+@json_required()
 def test_user_validation(user:User):
     
     response = {

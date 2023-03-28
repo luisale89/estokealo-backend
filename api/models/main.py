@@ -1,14 +1,30 @@
 from api.extensions import db
 from api.utils import helpers as h
+from api.utils.enums import AccessLevel, OperationStatus
 from datetime import datetime
 from werkzeug.security import generate_password_hash
 from sqlalchemy.dialects.postgresql import JSON
 from typing import Union
 
-#models
-from .global_models import *
 
 class User(db.Model):
+    """User Model"""
+    SCHEMA_PROPS:dict = {
+        "first_name": {"type": "string"},
+        "last_name": {"type": "string"},
+        "phone": {"type": "string"},
+        "address": {
+            "type": "object",
+            "properties": {
+                "street": {"type": "string"},
+                "number": {"type": "string"},
+                "city": {"type": "string"},
+                "country": {"type": "string"}
+            },
+            "additionalProperties": False,
+            "required": ["street", "number", "city", "country"]
+        }
+    }
     __tablename__="user"
     id = db.Column(db.Integer, primary_key=True)
     _email = db.Column(db.String(256), unique=True, nullable=False)
@@ -29,10 +45,10 @@ class User(db.Model):
     def _base_serializer(self) -> dict:
         return {
             "id": self.id,
-            "firstName": self.first_name,
-            "lastName": self.last_name,
+            "first_name": self.first_name,
+            "last_name": self.last_name,
             "email": self._email,
-            "signupCompleted": self._signup_completed
+            "signup_completed": self._signup_completed
         }
     
     def serialize(self) -> dict:
@@ -41,9 +57,9 @@ class User(db.Model):
     def serialize_all(self) -> dict:
         base_dict = self._base_serializer()
         base_dict.update({
-            "signupDate": h.datetime_formatter(self._signup_date),
+            "signup_date": h.datetime_formatter(self._signup_date),
             "phone": self.phone,
-            "profileImage": self._profile_image,
+            "profile_image": self._profile_image,
             "address": self.address.get("address", {})
         })
         return base_dict
@@ -100,15 +116,14 @@ class Role(db.Model):
     __tablename__="role"
     id = db.Column(db.Integer, primary_key=True)
     _relation_date = db.Column(db.DateTime, default=datetime.utcnow)
-    _inv_status = db.Column(db.String(12), default="pending") #["pending", "accepted", "rejected"]
+    _inv_status = db.Column(db.String(12), default=OperationStatus.PENDING.value) #["pending", "accepted", "rejected"]
     _is_active = db.Column(db.Boolean, default=True)
     user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
     company_id = db.Column(db.Integer, db.ForeignKey("company.id"), nullable=False)
-    role_function_id = db.Column(db.Integer, db.ForeignKey("role_function.id"), nullable=False)
+    access_level = db.Column(db.Integer, nullable=False, default=AccessLevel.VIEWER.value)
     #relationships
     user = db.relationship("User", back_populates="roles", lazy="joined")
     company = db.relationship("Company", back_populates="roles", lazy="joined")
-    role_function = db.relationship("RoleFunction", back_populates="roles", lazy="joined")
 
     def __repr__(self) -> str:
         return f"Role(id={self.id})"
@@ -116,10 +131,10 @@ class Role(db.Model):
     def _base_serializer(self) -> dict:
         return {
             "id": self.id,
-            "relationDate": h.datetime_formatter(self._relation_date),
-            "isActive": self._is_active,
-            "invitationStatus": self._inv_status,
-            "roleFunction": self.role_function.serialize()
+            "relation_date": h.datetime_formatter(self._relation_date),
+            "is_active": self._is_active,
+            "invitation_status": self._inv_status,
+            "access_level": self.access_level
         }
 
     def serialize(self) -> dict:
@@ -162,18 +177,49 @@ class Role(db.Model):
 
 
 class Company(db.Model):
+    """Company Model"""
+    SCHEMA_PROPS:dict = {
+        "name": {"type": "string"},
+        "tz_name": {"type": "string"},
+        "address": {
+            "type": "object",
+            "properties": {
+                "street": {"type": "string"},
+                "number": {"type": "string"},
+                "city": {"type": "string"},
+                "country": {"type": "string"},
+            },
+            "additionalProperties": False,
+            "required": ["street", "number", "city", "country"]
+        },
+        "currency_data": {
+            "type": "object",
+            "properties": {
+                "name": {"type": "string"},
+                "iso": {"type": "string"},
+                "symbol": {"type": "string"},
+                "rate": {"type": "number", "minimum": 0.0}
+            },
+            "additionalProperties": False,
+            "required": ["name", "iso", "symbol", "rate"]
+        }
+    }
 
-    BASE_CURRENCY= {"name": "Dólar Estadounidense", "iso": "USD", "symbol": "$"}
-
+    BASE_CURRENCY:dict= {
+        "name": "Dólar Estadounidense", 
+        "iso": "USD", 
+        "symbol": "$", 
+        "rate": 1.0
+    }
+    
     __tablename__= "company"
     id = db.Column(db.Integer, primary_key=True)
     _created_at = db.Column(db.DateTime, default=datetime.utcnow)
     _logo = db.Column(db.String(256), default="")
     name = db.Column(db.String(64), nullable=False)
-    timezone_name = db.Column(db.String(64), default="america/caracas")
+    tz_name = db.Column(db.String(64), default="america/caracas")
     address = db.Column(JSON, default={"address": {}})
     currency_data = db.Column(JSON, default={"currency_data": BASE_CURRENCY})
-    currency_rate = db.Column(db.Float(), default=1.0)
     #relationships
     roles = db.relationship("Role", back_populates="company", lazy="dynamic")
 
@@ -193,22 +239,22 @@ class Company(db.Model):
     def serialize_all(self):
         base_dict = self._base_serializer()
         base_dict.update({
-            "timezoneName": self.timezone_name,
+            "tz_name": self.tz_name,
             "address": self.address.get("address", {}),
             "currency": {
                 **self.currency_data.get("currency_data", self.BASE_CURRENCY),
-                "rate": self.currency_rate
             },
-            "creationDate": h.datetime_formatter(self._created_at)
+            "created_at": h.datetime_formatter(self._created_at)
         })
         return base_dict
 
     def dolarize(self, value:float) -> float:
         """ Convert 'price' parameter to the equivalent of the base currency"""
-        if self.currency_rate:
-            return round(value / self.currency_rate, 2)
+        currency_rate = self.currency_data.get("rate", 0)
+        if currency_rate:
+            return round(value / currency_rate, 2)
 
-        return 0.0
+        return 0.00
 
 
 class Store(db.Model):
@@ -221,6 +267,6 @@ class Store(db.Model):
 
     def _base_serialize(self) -> dict:
         return {
-            "record_id": self.id,
+            "id": self.id,
             "name": self.name
         }

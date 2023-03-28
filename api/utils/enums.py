@@ -1,29 +1,50 @@
-from enum import Enum, unique
+from enum import Enum
 
 
-@unique
-class RoleTypes(Enum):
-    ADMIN:str = "admin"
-    OWNER:str = "owner"
-    OPERATOR:str = "operator"
-    VIEWER:str = "viewer"
+class BaseEnum(Enum):
+    
+    @classmethod
+    def values_as_list(cls):
+        return [c.value for c in cls]
+
+    @classmethod
+    def names_as_list(cls):
+        return [c.name for c in cls]
+
+    @classmethod
+    def as_dict(cls):
+        return [{c.name: c.value} for c in cls]
 
 
-@unique
-class OperationStatus(Enum):
-    ACCEPTED:str = "accepted"
-    PENDING:str = "pending"
-    REJECTED:str = "rejected"
+class AccessLevel(BaseEnum):
+    OWNER = 0
+    ADMIN = 1
+    OPERATOR = 2
+    CLIENT = 3
+    VIEWER = 99
+
+
+class RoleTypes(BaseEnum):
+    OWNER = "propietario"
+    ADMIN = "administrador"
+    OPERATOR = "operador"
+    CLIENT = "cliente"
+    VIEWER = "observador"
+
+
+class OperationStatus(BaseEnum):
+    ACCEPTED = "accepted"
+    PENDING = "pending"
+    REJECTED = "rejected"
 
 
 if __name__ == "__main__":
-    print("RoleTypes values: ")
-    for member in RoleTypes:
-        print(member.value)
+    print("AccessLevel values: ")
+    print(AccessLevel.values_as_list())
+    print(AccessLevel.names_as_list())
+    print(AccessLevel.as_dict())
+    print(AccessLevel.OPERATOR.value)
 
     print("---")
     print("OperationStatus values: ")
-    for member in OperationStatus:
-        print(member.value)
-
-    
+    print(OperationStatus.values_as_list())

@@ -2,12 +2,12 @@ from flask import Blueprint, request
 from api.utils import helpers as h
 from api.utils.responses import JSONResponse
 from api.utils.exceptions import APIException
-from api.utils.db_operations import handle_db_error, update_row_content, Unaccent
+from api.utils.db_operations import handle_db_error, create_table_content, Unaccent, update_database_object
 from api.utils.decorators import json_required, user_required
+from api.utils.enums import AccessLevel, OperationStatus
 from api.services.redis_service import RedisClient as RDS
 from api.extensions import db
 from api.models.main import Company, Role, User
-from api.models.global_models import RoleFunction
 from flask_jwt_extended import get_jwt
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy import func
@@ -17,8 +17,8 @@ user_bp = Blueprint("user_pb", __name__)
 
 
 @user_bp.route("/", methods=["GET"])
-@json_required()
 @user_required()
+@json_required()
 def get_user_info(user:User):
     """return user info"""
     response = {"user": user.serialize_all()}
@@ -26,16 +26,20 @@ def get_user_info(user:User):
 
 
 @user_bp.route("/", methods=["PUT"])
-@json_required()
 @user_required()
+@json_required(schema={
+    "type": "object",
+    "properties": User.SCHEMA_PROPS,
+    "additionalProperties": False
+})
 def update_user_info(user, body):
     """update user info"""
-    new_rows, invalids = update_row_content(User, body)
+    new_records, invalids = create_table_content(User, body)
     if invalids:
         raise APIException.from_response(JSONResponse.bad_request(invalids))
 
     try:
-        h.update_database_object(user, new_rows)
+        update_database_object(user, new_records)
         db.session.commit()
     except SQLAlchemyError as e:
         handle_db_error(e)
@@ -43,13 +47,13 @@ def update_user_info(user, body):
     return JSONResponse(message="user has been updated", data=user.serialize_all()).to_json()
 
 
-@user_bp.route("/roles", methods=["GET"])
-@json_required()
+@user_bp.route("/companies", methods=["GET"])
 @user_required()
-def get_user_roles(user):
-    """get all user roles, from invitations or the ones that have been created"""
+@json_required()
+def get_user_companies(user):
+    """get all user companies, from invitations or the ones that have been created"""
     qp = h.QueryParams(request.args)
-    page, limit = qp.get_pagination_params()
+    pg_params = qp.get_pagination_params()
     role_status = qp.get_first_value("status") #status: pending, accepted, rejected
 
     base_q = db.session.query(Role).filter(Role.user_id == user.id)
@@ -57,10 +61,10 @@ def get_user_roles(user):
     if role_status:
         base_q = base_q.filter(Role._inv_status == role_status)
 
-    all_roles = base_q.paginate(page, limit)
+    all_roles = base_q.paginate(**pg_params)
 
     response = {
-        "roles": list(map(lambda x: {**x.serialize_with_user()}, all_roles.items)),
+        "companies": list(map(lambda x: {**x.serialize_with_user()}, all_roles.items)),
         **qp.get_pagination_form(all_roles),
         **qp.get_warings()
     }
@@ -68,42 +72,43 @@ def get_user_roles(user):
     return JSONResponse(data=response).to_json()
 
 
-@user_bp.route("/roles", methods=["POST"])
-@json_required({"name": str})
+@user_bp.route("/company", methods=["POST"])
 @user_required()
+@json_required(schema={
+    "type": "object",
+    "properties" : Company.SCHEMA_PROPS,
+    "required": ["name"],
+    "additionalProperties": False
+})
 def create_company(user, body):
 
-    new_rows, invalids = update_row_content(Company, body)
+    new_records, invalids = create_table_content(Company, body)
     if invalids:
         raise APIException.from_response(JSONResponse.bad_request(invalids))
     
-    # #check if user has already a company under his name
-    # owned_company = db.session.query(Company.id).select_from(User).join(User.roles).\
-    #     join(Role.company).filter(User.id == user.id, Role.code == "owner").first()
-    # if owned_company:
-    #     raise APIException.from_response(JSONResponse.conflict(
-    #         {"user": "user already has a company on his name"})
-    #     )
+    #check if user has already a company under his name
+    owned_company = db.session.query(Company.id).select_from(User).join(User.roles).\
+        join(Role.company).filter(User.id == user.id, Role.access_level == AccessLevel.OWNER.value).first()
+    if owned_company:
+        raise APIException.from_response(JSONResponse.conflict(
+            {"user": "user already has a company on his name"})
+        )
 
     #check if name is available among all names in the app
-    company_name = h.StringHelpers(new_rows.get("name"))
+    company_name = new_records.get("name")
     name_exists = db.session.query(Company.id).\
-        filter(Unaccent(func.lower(Company.name)) == company_name.as_unaccent_word.lower()).first()
+        filter(Unaccent(func.lower(Company.name)) == h.remove_accents(company_name)).first()
     
     if name_exists:
-        raise APIException.from_response(JSONResponse.conflict({"name": company_name.value}))
-
-    role_function = db.session.query(RoleFunction).filter(RoleFunction.code == "owner").first()
-    if not role_function:
-        role_function = RoleFunction.add_defaults("owner")
+        raise APIException.from_response(JSONResponse.conflict({"name": company_name}))
 
     try:
-        new_company = Company(**new_rows)
+        new_company = Company(**new_records)
         new_role = Role(
             company = new_company,
             user = user,
-            role_function = role_function,
-            inv_status = "accepted"
+            access_level = AccessLevel.OWNER.value,
+            inv_status = OperationStatus.ACCEPTED.value
         )
         db.session.add_all([new_company, new_role])
         db.session.commit()
@@ -113,14 +118,21 @@ def create_company(user, body):
     return JSONResponse(
         message="new company has been created",
         status_code=201,
-        data=new_role.serialize_all()
+        data=new_role.serialize_with_user()
     ).to_json()
 
 
-@user_bp.route("/roles/<int:company_id>/invitation", methods=["PUT"])
-@json_required({"accept_invitation": bool})
+@user_bp.route("/companies/<int:company_id>/invitation", methods=["PUT"])
 @user_required()
-def update_role_status(user, body, company_id):
+@json_required(schema={
+    "type": "object",
+    "properties": {
+        "accept_invitation": {"type": "boolean"},
+    },
+    "required": ["accept_invitation"],
+    "additionalProperties": False
+})
+def resolve_company_invitation(user, body, company_id):
 
     inv_result = body["accept_invitation"]
     valid, msg = h.is_valid_id(company_id)
@@ -142,10 +154,10 @@ def update_role_status(user, body, company_id):
         target_role.inv_status = "rejected"
 
     db.session.commit()
-    return JSONResponse(message="invitation resolved").to_json()
+    return JSONResponse(message="invitation resolved successfullt").to_json()
 
 
-@user_bp.route("/roles/<int:company_id>/activate", methods=["GET"])
+@user_bp.route("/companies/<int:company_id>/activate", methods=["GET"])
 @json_required()
 @user_required()
 def get_company_access(user, company_id):

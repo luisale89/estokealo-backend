@@ -2,8 +2,9 @@ from flask import Blueprint, request
 from api.utils import helpers as h
 from api.utils.responses import JSONResponse
 from api.utils.exceptions import APIException
-from api.utils.db_operations import handle_db_error, update_row_content, Unaccent
+from api.utils.db_operations import handle_db_error, create_table_content, Unaccent, update_database_object
 from api.utils.decorators import json_required, role_required
+from api.utils.enums import AccessLevel
 from api.services.email_service import Email_api_service as ems
 from api.extensions import db
 from api.models.main import Company, Role, User
@@ -16,33 +17,37 @@ company_bp = Blueprint("company_bp", __name__)
 
 
 @company_bp.route("/", methods=["GET"])
-@json_required()
 @role_required()
+@json_required()
 def get_company(role):
 
     return JSONResponse(data= role.company.serialize_all()).to_json()
 
 
 @company_bp.route("/", methods=["PUT"])
-@json_required()
-@role_required(level=1)
+@role_required(level=AccessLevel.ADMIN.value)
+@json_required(schema={
+    "type": "object",
+    "properties": Company.SCHEMA_PROPS,
+    "additionalProperties": False
+})
 def update_company(role, body):
 
-    new_rows, invalids = update_row_content(Company, body)
+    new_records, invalids = create_table_content(Company, body)
     if invalids:
         raise APIException.from_response(JSONResponse.bad_request(invalids))
 
-    if "name" in new_rows:
-        company_name = h.StringHelpers(new_rows.get("name"))
+    if "name" in new_records:
+        company_name = new_records.get("name")
         name_exists = db.session.query(Company.id).\
-            filter(Unaccent(func.lower(Company.name)) == company_name.as_unaccent_word.lower()).\
+            filter(Unaccent(func.lower(Company.name)) == h.remove_accents(company_name)).\
                 filter(Company.id != role.company.id).first()
 
         if name_exists:
             raise APIException.from_response(JSONResponse.conflict({"name": company_name.value}))
 
     try:
-        h.update_database_object(role.company, new_rows)
+        update_database_object(role.company, new_records)
         db.session.commit()
     except SQLAlchemyError as e:
         handle_db_error(e)
@@ -54,20 +59,20 @@ def update_company(role, body):
 
 
 @company_bp.route("/users", methods=["GET"])
+@role_required(level=AccessLevel.ADMIN.value)
 @json_required()
-@role_required(level=1)
 def get_company_users(role):
 
     qp = h.QueryParams(request.args)
     status = qp.get_first_value("status")
-    page, limit = qp.get_pagination_params()
+    pg_params = qp.get_pagination_params()
 
     base_q = db.session.query(Role).join(Role.company).filter(Company.id == role.company.id)
     #filter 1
     if status: #["accepted", "rejected", "pending"]
         base_q = base_q.filter(Role._inv_status == status)
 
-    all_roles = base_q.paginate(page, limit)
+    all_roles = base_q.paginate(**pg_params)
 
     return JSONResponse(
         data={
@@ -82,8 +87,8 @@ def get_company_users(role):
 
 
 @company_bp.route("/users/invitation", methods=["POST"])
+@role_required(level=AccessLevel.ADMIN.value)
 @json_required({"email": str, "role_function_id": int})
-@role_required(level=1)
 def invite_user(role, body):
 
     email = h.StringHelpers(body["email"])
@@ -178,7 +183,7 @@ def update_user_role(role, body:dict, user_id:int):
         raise APIException.from_response(JSONResponse.conflict({"role": "can't update self role"}))
 
     #update role status
-    new_rows = {"is_active": body["is_active"]}
+    new_records = {"is_active": body["is_active"]}
 
     #update role_function_id
     new_function_id = body.get("new_function_id", None)
@@ -194,10 +199,10 @@ def update_user_role(role, body:dict, user_id:int):
         if role.access_level > target_function.access_level:
             raise APIException.from_response(JSONResponse.unauthorized({"role": "invalid role access-level"}))
 
-        new_rows.update({"role_function_id": new_function_id})
+        new_records.update({"role_function_id": new_function_id})
 
     try:
-        h.update_database_object(target_role, new_rows=new_rows)
+        update_database_object(target_role, new_records=new_records)
         db.session.commit()
 
     except SQLAlchemyError as e:
@@ -238,13 +243,3 @@ def delete_user_from_company(role, user_id):
         handle_db_error(e)
 
     return JSONResponse("Role has been deleted").to_json()
-
-
-@company_bp.route('/roles', methods=['GET'])
-@json_required()
-@role_required()#any user
-def get_company_roles(role):
-
-    return JSONResponse(data={
-        "roles": list(map(lambda x: x.serialize(), db.session.query(RoleFunction).all()))
-    }).to_json()

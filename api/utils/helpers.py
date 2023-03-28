@@ -95,103 +95,81 @@ def validate_inputs(inputs:dict) -> dict:
     return invalids
 
 
-class StringHelpers:
-    """StringHelpers utilities"""
-
-    def __init__(self, value:str= "") -> None:
-        self.value = value.strip() #remove blank spaces at the begining and the end of the word
-
-    def __repr__(self) -> str:
-        return f"StringHelpers(value={self.value})"
-
-    def __str__(self) -> str:
-        return f"{self.value!r}"
-
-    def __bool__(self) -> bool:
-        return True if self.value else False
-
-    @property
-    def as_normalized_email(self) -> str:
-        """returns a string without blank spaces and lowercase"""
-        return self.value.lower()
-
-    @property
-    def as_unaccent_word(self) -> str:
-        """returns a string without accented characters
-            -not receiving bytes as a string parameter-
-        """ 
-        nfkd_form = unicodedata.normalize('NFKD', self.value)
-        return u"".join([c for c in nfkd_form if not unicodedata.combining(c)])
+def remove_accents(string:str = "") -> str:
+    """returns a string without accented characters
+        -not receiving bytes as a string parameter-
+    """ 
+    nfkd_form = unicodedata.normalize('NFKD', string)
+    return u"".join([c for c in nfkd_form if not unicodedata.combining(c)])
 
 
-    def normalize(self, spaces:bool = False) -> str:
-        """
-        Normalize a characters string.
-        Args:
-            spaces (bool, optional): Indica si la cadena de caracteres incluye o no espacios. 
-            Defaults to False.
-        Returns:
-            str: Candena de caracteres normalizada.
-        """
-        if not spaces:
-            return self.value.replace(" ", "") #remove blank spaces inside the word
-        else:
-            return self.value
-    
-
-    def is_valid_string(self, max_length:int = 0) -> tuple[bool, str]:
-        """
-        function validates if a string is valid to be stored in the database.
-        Args:
-            max_length (int): max length of the string.
-        Returns:
-            (invalid:bool, str:error message)
-        """
-        if not self.value:
-            return False, "empty string is an invalid value"
-
-        if len(self.value) > max_length:
-            return False, f"Input string is too long, {max_length} characters max."
-
-        return True, "string validated"
+def normalize_string(string:str = "") -> str:
+    """returns a string without blank spaces at begining and the end, and lowercased"""
+    return string.lower().strip()
 
 
-    def is_valid_email(self) -> tuple[bool, str]:
-        """
-        Validates if a string has a valid email format
-        Returns tuple:
-            (valid:bool, str:error message)
-                valid=True if the email is valid
-                False if the email is invalid
-        """
-        max_length = 320
-        if len(self.value) > max_length:
-            return False, f"invalid email length, max is {max_length} chars"
-
-        # Regular expression that checks a valid email
-        ereg = '^[\w]+[\._]?[\w]+[@]\w+[.]\w{2,3}$'
-        # ereg = '\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'
-
-        if not re.search(ereg, self.value):
-            return False, f"invalid email format, <abc@def.gh> required"
-
-        return True, "email is valid"
+def remove_all_spaces(string:str = "") -> str:
+    """
+    Normalize a characters string.
+    Returns:
+        str: Candena de caracteres sin espacios en blanco.
+    """
+    return string.replace(" ", "")
 
 
-    def is_valid_password(self) -> tuple[bool, str]:
-        """
-        Check if a password meets the minimum security parameters
-        defined for this application.
-        Returns tuple:
-            (invalid:bool, str:error message)
-        """
-        # Regular expression that checks a secure password
-        preg = '^.*(?=.{8,})(?=.*\d)(?=.*[a-z])(?=.*[A-Z]).*$'
+def is_valid_string_to_db(string:str = "", max_length:int = 1) -> tuple[bool, str]:
+    """
+    function validates if a string is valid to be stored in the database.
+    Args:
+        max_length (int): max length of the string.
+    Returns:
+        (invalid:bool, str:error message)
+    """
+    if not string:
+        return False, "empty string is an invalid value"
 
-        if not re.search(preg, self.value):
-            return False, "password is invalid or not includes all required characters"
+    if len(string) > max_length:
+        return False, f"Input string is too long, {max_length} characters max."
 
-        return True, "password validated"
+    return True, "string validated"
+
+
+def is_valid_email_format(string:str = "") -> tuple[bool, str]:
+    """
+    Validates if a string has a valid email format
+    Returns tuple:
+        (valid:bool, str:error message)
+            valid=True if the email is valid
+            False if the email is invalid
+    """
+    max_length = 320
+    if len(string) > max_length:
+        return False, f"invalid email length, max is {max_length} chars"
+
+    # Regular expression that checks a valid email
+    ereg = '^[\w]+[\._]?[\w]+[@]\w+[.]\w{2,3}$'
+    # ereg = '\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'
+
+    if not re.search(ereg, string):
+        return False, f"invalid email format, check your imput and try again"
+
+    return True, "email is valid"
+
+
+def is_valid_password_format(string:str) -> tuple[bool, str]:
+    """
+    Check if a password meets the minimum security parameters
+    defined for this application.
+    Returns tuple:
+        (invalid:bool, str:error message)
+    """
+    # Regular expression that checks a secure password
+    preg = '^.*(?=.{8,})(?=.*\d)(?=.*[a-z])(?=.*[A-Z]).*$'
+
+    if not re.search(preg, string):
+        return False, "password is invalid or not includes all required characters"
+
+    return True, "password validated"
 
 
 def is_valid_id(tar_int:int) -> tuple[bool, str]:
@@ -309,9 +287,9 @@ class QueryParams:
         return [int(v) for v in values if convert_str_to_int(v)]
 
 
-    def get_pagination_params(self) -> tuple[int, int]:
+    def get_pagination_params(self) -> dict[str, int]:
         """
-        function to get pagination parameters from request
+        function to get pagination parameters from request 
         default values are given if no parameter is in request.
         Return Tuple -> (page, limit)
         """
@@ -325,7 +303,7 @@ class QueryParams:
             self.warnings.append({"limit": "pagination parameter [limit] not found as [int] in query string"})
             limit = 20 #default limit value
 
-        return page, limit
+        return {"page": page, "per_page": limit}
 
 
     @staticmethod
@@ -388,15 +366,9 @@ def create_role_access_token(jwt_id:str, role_id:int, user_id:int) -> str:
     )
 
 
-def update_database_object(model:object, new_rows:dict) -> None:
-    """
-    update database table
 
-    parameters
-    - model (ORM instance to be updated)
-    - new_rows:dict (new values)
-    """
-    for key, value in new_rows.items():
-        setattr(model, key, value)
-    
-    return None
+if __name__ == "__main__":
+    test_email = "Luis.lucena7@gmail.com"
+    valid, msg = is_valid_email_format(test_email)
+    if not valid:
+        print(msg)
