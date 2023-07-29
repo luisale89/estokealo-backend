@@ -2,17 +2,16 @@ from enum import Enum
 
 
 class BaseEnum(Enum):
-    
     @classmethod
-    def values_as_list(cls):
+    def values_as_list(cls) -> list:
         return [c.value for c in cls]
 
     @classmethod
-    def names_as_list(cls):
+    def names_as_list(cls) -> list:
         return [c.name for c in cls]
 
     @classmethod
-    def as_dict(cls):
+    def as_dict(cls) -> list:
         return [{c.name: c.value} for c in cls]
 
 

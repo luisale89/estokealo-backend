@@ -2,11 +2,11 @@ from redislite import Redis
 import os, datetime
 from api.utils import helpers as h
 
-class RedisClient:
 
+class RedisClient:
     # REDIS_DB_PATH = os.environ.get("REDIS_DB_PATH", os.path.join("/tmp/estokealo.db")
     REDIS_DB_PATH = os.path.join("/tmp/estokealo.db")
-    
+
     def __init__(self) -> None:
         pass
 

@@ -33,43 +33,61 @@ def create_table_content(model, new_table_data: dict) -> tuple[dict, dict]:
     warnings = {}
 
     for row, content in new_table_data.items():
-        if row in table_columns:  # si coinicide el nombre del parmetro con alguna de las columnas de la db
+        if (
+            row in table_columns
+        ):  # si coinicide el nombre del parmetro con alguna de las columnas de la db
             data = table_columns[row]
-            if data.name.startswith("_") or data.primary_key or data.name.endswith("_id"):
+            if (
+                data.name.startswith("_")
+                or data.primary_key
+                or data.name.endswith("_id")
+            ):
                 continue  # columnas que cumplan con los criterios anteriores no se pueden actualizar en esta funcion.
 
             column_type = data.type.python_type
 
             if not isinstance(content, column_type):
-                warnings.update({row: f"invalid instance, [{column_type.__name__}] is expected"})
+                warnings.update(
+                    {row: f"invalid instance, [{column_type.__name__}] is expected"}
+                )
                 continue
 
             if column_type == datetime:
                 content = h.normalize_datetime(content)
                 if not content:
-                    warnings.update({row: f"invalid datetime format, {content} was received"})
+                    warnings.update(
+                        {row: f"invalid datetime format, {content} was received"}
+                    )
                     continue  # continue with the next loop
 
             if isinstance(content, str):
-                valid, msg = h.is_valid_string_to_db(string=content, max_length=data.type.length)
+                valid, msg = h.is_valid_string_to_db(
+                    string=content, max_length=data.type.length
+                )
                 if not valid:
                     warnings.update({row: msg})
                     continue
-                
-                content = h.normalize_string(string=content)
 
-            if isinstance(content, list) or isinstance(content, dict):  # formatting json content
+                content = h.normalize_string(target_string=content)
+
+            if isinstance(content, list) or isinstance(
+                content, dict
+            ):  # formatting json content
                 content = {f"{table_columns[row].name}": content}
 
             to_update[row] = content
 
     if not to_update:
-        warnings.update({"empty_params": 'no match were found between app-parameters and parameters in body'})
+        warnings.update(
+            {
+                "empty_params": "no match were found between app-parameters and parameters in body"
+            }
+        )
 
     return to_update, warnings
 
 
-def update_database_object(model:object, new_rows:dict) -> None:
+def update_database_object(model: object, new_rows: dict) -> None:
     """
     update database table
 
@@ -79,7 +97,7 @@ def update_database_object(model:object, new_rows:dict) -> None:
     """
     for key, value in new_rows.items():
         setattr(model, key, value)
-    
+
     return None
 
 
@@ -91,5 +109,6 @@ def handle_db_error(error) -> None:
 
 class Unaccent(ReturnTypeFromArgs):
     inherit_cache = True
+
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
