@@ -1,24 +1,20 @@
-from email import message
-from unittest import result
-from .responses import JSONResponse
+#python > 3.10
+from api.utils.responses import JSONResponse, ResponseParams
+from typing_extensions import Self
 
 
 class APIException(Exception, JSONResponse):
     def __init__(
         self,
-        message: str,
-        result: str = "error",
-        status_code: int = 400,
-        data: dict = {},
+        exception_message: str,
+        exception_status_code: int = 400,
     ) -> None:  # default code 400
         Exception.__init__(self)
-        JSONResponse.__init__(self, message, result, status_code, data)
+        JSONResponse.__init__(self, message=exception_message, status_code=exception_status_code)
 
     @classmethod
-    def from_response(cls, response: dict) -> object:
+    def from_response(cls, parameters: ResponseParams) -> Self:
         return cls(
-            message=response.get("message", "something went wrong..."),
-            result=response.get("result", "internal_server_error"),
-            status_code=response.get("status_code", 500),
-            data=response.get("data", {}),
+            exception_message=parameters["message"],
+            exception_status_code=parameters["status_code"]
         )

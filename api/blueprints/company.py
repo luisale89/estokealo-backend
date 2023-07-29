@@ -139,7 +139,7 @@ def invite_user(role, body):
             email_to=email.as_normalized_email, company_name=role.company.name
         ).send_email()
         if not success:
-            raise APIException.from_response(JSONResponse.serivice_unavailable(msg))
+            raise APIException.from_response(JSONResponse.service_unavailable(msg))
 
         try:
             new_user = User(
@@ -176,7 +176,7 @@ def invite_user(role, body):
         user_name=target_user.first_name,
     ).send_email()
     if not success:
-        raise APIException.from_response(JSONResponse.serivice_unavailable(msg))
+        raise APIException.from_response(JSONResponse.service_unavailable(msg))
 
     try:
         new_role = Role(

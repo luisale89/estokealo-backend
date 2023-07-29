@@ -44,23 +44,24 @@ def create_app(test_config=None):
 
 def handle_DBAPI_disconnect(e):
     resp = JSONResponse(
-        **JSONResponse.serivice_unavailable(data={"main_database": str(e)})
+        **JSONResponse.service_unavailable()
     )
+    print(f"DBAPI_disconnect: {e}")
     return resp.to_json()
 
 
 def handle_http_error(e):
     return JSONResponse(
-        message=e.description, status_code=e.code, result=e.name
+        message=e.description, status_code=e.code
     ).to_json()
 
 
 def handle_internal_server_error(e):
-    resp = JSONResponse(message=e.description, status_code=500, result=e.name)
+    resp = JSONResponse(message=e.description, status_code=500)
     return resp.to_json()
 
 
-def handle_API_Exception(exception):
+def handle_API_Exception(exception: APIException):
     return exception.to_json()
 
 
@@ -77,20 +78,19 @@ def check_if_token_revoked(jwt_header, jwt_payload) -> bool:
 @jwt.revoked_token_loader
 @jwt.expired_token_loader
 def expired_token_msg(jwt_header, jwt_payload):
-    rsp = JSONResponse(
-        **JSONResponse.unauthorized(
-            data={
-                "jwt": "token has been revoked or has expired",
-                "jwt_expires_epoch": jwt_payload["exp"],
-                "jwt_id": jwt_payload["sub"],
-            }
-        )
-    )
+    data = {
+        "jwt": "token has been revoked or has expired",
+        "jwt_expires_epoch": jwt_payload["exp"],
+        "jwt_id": jwt_payload["sub"],
+    }
+    rsp = JSONResponse(**JSONResponse.unauthorized())
+    print(data)
     return rsp.to_json()
 
 
 @jwt.invalid_token_loader
 @jwt.unauthorized_loader
 def invalid_token_msg(error):
-    rsp = JSONResponse(**JSONResponse.unauthorized(data={"jwt": error}))
+    rsp = JSONResponse(**JSONResponse.unauthorized())
+    print({"jwt": error})
     return rsp.to_json()

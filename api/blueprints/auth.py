@@ -15,8 +15,8 @@ from api.utils.decorators import (
     verification_token_required,
     verified_token_required,
 )
-from api.services.email_service import Email_api_service as ems
-from api.services.redis_service import RedisClient as RDS
+from api.services.email_service import Email_api_service as Email
+from api.services.redis_service import RedisClient as Redis
 from api.extensions import db
 from api.models.main import Company, Role, User
 from sqlalchemy.exc import SQLAlchemyError
@@ -27,25 +27,25 @@ from flask_jwt_extended import create_access_token, get_jwt
 auth_bp = Blueprint("auth_bp", __name__)
 
 
-@auth_bp.route("/email-public-info", methods=["GET"])
+@auth_bp.route("/user-public-info", methods=["GET"])
 @json_required()
-def get_email_public_info():
+def get_user_public():
     """Public Endpoint"""
     qp = h.QueryParams(request.args)
     email = qp.get_first_value("email")
 
     if not email:  # if email is not in query parameters
-        raise APIException.from_response(JSONResponse.bad_request(qp.get_warings()))
+        raise APIException.from_response(JSONResponse.bad_request())
 
     valid, msg = h.is_valid_email_format(email)
     if not valid:
-        raise APIException.from_response(JSONResponse.bad_request({"email": msg}))
+        raise APIException.from_response(JSONResponse.bad_request())
 
-    user: User = User.filter_user(email=h.normalize_string(email))
+    user = User.filter_user_by_email(email=h.normalize_string(email))
     if not user or not user.signup_completed:
-        raise APIException.from_response(JSONResponse.not_found({"email": email}))
+        raise APIException.from_response(JSONResponse.not_found())
 
-    return JSONResponse(data={"public_info": user.serialize_public_info()}).to_json()
+    return JSONResponse(data={"user_public": user.serialize_public_info()}).to_json()
 
 
 @auth_bp.route("/email-validation", methods=["GET"])
@@ -70,12 +70,12 @@ def get_email_validationCode():
     normalized_email = h.normalize_string(email)
 
     random_code = randint(100000, 999999)
-    success, msg = ems.user_verification(
+    success, msg = Email.user_verification(
         email_to=normalized_email, verification_code=random_code
     ).send_email()
     if not success:
         raise APIException.from_response(
-            JSONResponse.serivice_unavailable({"email_serivice": msg})
+            JSONResponse.service_unavailable({"email_serivice": msg})
         )
 
     verification_token = create_access_token(
@@ -115,7 +115,7 @@ def validate_verification_code(claims, body):
         )
 
     email_in_claims = claims["sub"]
-    RDS().add_jwt_to_blocklist(claims)  # jwt to blocklist
+    Redis().add_jwt_to_blocklist(claims)  # jwt to blocklist
     verified_token = create_access_token(
         identity=email_in_claims, additional_claims={"verified_token": True}
     )
@@ -158,8 +158,8 @@ def signup_user(body, claims):
 
     new_records.update({"email": email, "password": password, "signup_completed": True})
     # jwt to blocklist
-    RDS().add_jwt_to_blocklist(claims)
-    user: User = User.filter_user(email=email)
+    Redis().add_jwt_to_blocklist(claims)
+    user: User = User.filter_user_by_email(email=email)
     response = {"access_token": ""}
     # complete user's registration process
     if user:
@@ -228,9 +228,9 @@ def reset_user_password(body, claims):
         )
 
     # jwt to blocklist
-    RDS().add_jwt_to_blocklist(claims)
+    Redis().add_jwt_to_blocklist(claims)
 
-    user: User = User.filter_user(email=email)
+    user: User = User.filter_user_by_email(email=email)
     if not user:
         raise APIException.from_response(JSONResponse.not_found({"email": email}))
 
@@ -271,7 +271,7 @@ def login_user(body):
 
     normalized_email = h.normalize_string(email)
 
-    user: User = User.filter_user(email=normalized_email)
+    user: User = User.filter_user_by_email(email=normalized_email)
     if not user:
         raise APIException.from_response(
             JSONResponse.not_found({"email": normalized_email})
@@ -328,7 +328,7 @@ def login_user(body):
 @user_required()
 @json_required()
 def logout_user(user):
-    RDS().add_jwt_to_blocklist(get_jwt())
+    Redis().add_jwt_to_blocklist(get_jwt())
     return JSONResponse(f"user {user.email!r} has been disconected").to_json()
 
 

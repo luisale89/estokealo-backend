@@ -4,8 +4,6 @@ from api.utils.enums import AccessLevel, OperationStatus
 from datetime import datetime
 from werkzeug.security import generate_password_hash
 from sqlalchemy.dialects.postgresql import JSON
-from typing import Union
-
 
 class User(db.Model):
     """User Model"""
@@ -74,15 +72,17 @@ class User(db.Model):
         return base_dict
 
     @classmethod
-    def filter_user(cls, email: str = "", user_id: int = 0) -> Union[object, None]:
+    def filter_user_by_email(cls, email: str = "", user_id: int = 0):
         """
         Filter a user instance by its email address or id
         """
-        user = db.session.query(cls)
-        if user_id:
-            return user.get(id)
+        user: cls = db.session.query(cls).filter(User._email == email).first()
+        return user
 
-        return user.filter(User._email == email).first()
+    @classmethod
+    def filter_user_by_id(cls, uid:int = 0):
+        user: cls = db.session.query(cls).get(uid)
+        return user
 
     @property
     def is_enabled(self) -> bool:
